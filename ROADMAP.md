@@ -13,7 +13,7 @@ Design principles
 ## Phase 1: Core engine (foundation)
 - [x] Event-driven simulation clock, seeded RNG, event queue
 - [x] Order / Trade / Account primitives with integer-tick prices
-- [ ] Continuous limit order book (price-time priority, partial fills, cancels)
+- [x] Continuous limit order book (price-time priority, partial fills, cancels)
 - [ ] Friction stack interface: maker/taker fees, half-spread, latency, fixed per-trade cost
 - [ ] Ledger with invariant checks (cash + inventory conservation)
 
