@@ -15,7 +15,7 @@ Design principles
 - [x] Order / Trade / Account primitives with integer-tick prices
 - [x] Continuous limit order book (price-time priority, partial fills, cancels)
 - [x] Friction stack interface: maker/taker fees, half-spread, latency, fixed per-trade cost
-- [ ] Ledger with invariant checks (cash + inventory conservation)
+- [x] Ledger with invariant checks (cash + inventory conservation)
 
 ## Phase 2: Agents
 - [ ] Agent base class: observe -> decide -> act, with an explicit `decision_cost`
