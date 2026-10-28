@@ -19,7 +19,7 @@ Design principles
 
 ## Phase 2: Agents
 - [x] Agent base class: observe -> decide -> act, with an explicit `decision_cost`
-- [ ] Zero-intelligence traders (Gode-Sunder baseline)
+- [x] Zero-intelligence traders (Gode-Sunder baseline)
 - [ ] Market maker with inventory risk (Avellaneda-Stoikov style)
 - [ ] Informed trader + noise traders (Kyle 1985 / Glosten-Milgrom)
 - [ ] Bayesian learner that updates beliefs from order flow
