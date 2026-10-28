@@ -18,7 +18,7 @@ Design principles
 - [x] Ledger with invariant checks (cash + inventory conservation)
 
 ## Phase 2: Agents
-- [ ] Agent base class: observe -> decide -> act, with an explicit `decision_cost`
+- [x] Agent base class: observe -> decide -> act, with an explicit `decision_cost`
 - [ ] Zero-intelligence traders (Gode-Sunder baseline)
 - [ ] Market maker with inventory risk (Avellaneda-Stoikov style)
 - [ ] Informed trader + noise traders (Kyle 1985 / Glosten-Milgrom)

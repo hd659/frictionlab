@@ -67,6 +67,7 @@ class Ledger:
         self._settled: set = set()
         self.cash_in = 0
         self.inventory_in = 0
+        self.transferred = 0
 
     # ---- accounts / external flows -----------------------------------
     def open_account(self, agent_id: int, cash: int = 0, position: int = 0) -> Account:
@@ -95,6 +96,22 @@ class Ledger:
         acct.position += position
         self.cash_in += cash
         self.inventory_in += position
+
+    def transfer(self, src: int, dst: int, amount: int) -> None:
+        """Internal cash move between two agent accounts (e.g. a cost sink).
+
+        Not an external flow: `cash_in` is untouched, so conservation holds.
+        Atomic: validation precedes mutation.
+        """
+        amount = _check_int("amount", amount, nonneg=True)
+        a, b = self[src], self[dst]
+        if a is b:
+            raise LedgerError(f"transfer from account {src} to itself")
+        if not self.allow_overdraft and a.cash < amount:
+            raise LedgerError(f"transfer overdraws account {src}")
+        a.cash -= amount
+        b.cash += amount
+        self.transferred += amount
 
     def __getitem__(self, agent_id: int) -> Account:
         try:
