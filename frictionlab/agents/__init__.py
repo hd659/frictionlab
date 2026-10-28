@@ -6,6 +6,7 @@ intents that the `Venue` executes and settles.
 from .base import (
     COST_SINK_ID, Action, ActionError, Agent, Cancel, MarketView, Submit, Venue,
 )
+from .bayesian import BayesianLearner, tick_grid, trade_likelihood
 from .fundamental import FundamentalProcess
 from .informed import EdgeQuote, InformedTrader
 from .market_maker import ASQuote, AvellanedaStoikovMM
@@ -15,6 +16,7 @@ from .zero_intelligence import ZICTrader, ZITrader, ZIUTrader, make_zi_populatio
 __all__ = [
     "COST_SINK_ID", "Action", "ActionError", "Agent", "Cancel", "MarketView",
     "Submit", "Venue",
+    "BayesianLearner", "tick_grid", "trade_likelihood",
     "FundamentalProcess",
     "EdgeQuote", "InformedTrader",
     "ASQuote", "AvellanedaStoikovMM",

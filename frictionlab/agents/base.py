@@ -37,6 +37,7 @@ class MarketView:
     cash: int
     position: int
     open_orders: Tuple[int, ...] = ()
+    recent_trades: Tuple[Trade, ...] = ()  # tape tail, oldest first
 
     @property
     def spread(self) -> Optional[int]:
@@ -92,6 +93,7 @@ class Venue:
     order_ids: IdGen = field(default_factory=IdGen)
     cost_sink_id: int = COST_SINK_ID
     depth: int = 5
+    tape: int = 64  # trades exposed via MarketView.recent_trades
 
     def __post_init__(self) -> None:
         if self.cost_sink_id not in self.ledger:
@@ -108,7 +110,8 @@ class Venue:
                           tuple(b.depth(Side.BUY, self.depth)),
                           tuple(b.depth(Side.SELL, self.depth)),
                           b.trades[-1] if b.trades else None,
-                          acct.cash, acct.position, tuple(sorted(agent.open_orders)))
+                          acct.cash, acct.position, tuple(sorted(agent.open_orders)),
+                          tuple(b.trades[-self.tape:]) if self.tape else ())
 
     def charge(self, agent_id: int, amount: int) -> bool:
         """Route a decision cost to the sink; False if the agent cannot pay."""

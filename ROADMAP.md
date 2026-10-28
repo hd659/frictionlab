@@ -22,7 +22,7 @@ Design principles
 - [x] Zero-intelligence traders (Gode-Sunder baseline)
 - [x] Market maker with inventory risk (Avellaneda-Stoikov style)
 - [x] Informed trader + noise traders (Kyle 1985 / Glosten-Milgrom)
-- [ ] Bayesian learner that updates beliefs from order flow
+- [x] Bayesian learner that updates beliefs from order flow
 - [ ] Bounded-rational agent: pays a cost per deliberation step (satisficing vs optimizing)
 
 ## Phase 3: Market structures
