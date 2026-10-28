@@ -11,7 +11,7 @@ Design principles
 - Public, generic, no personal data.
 
 ## Phase 1: Core engine (foundation)
-- [ ] Event-driven simulation clock, seeded RNG, event queue
+- [x] Event-driven simulation clock, seeded RNG, event queue
 - [ ] Order / Trade / Account primitives with integer-tick prices
 - [ ] Continuous limit order book (price-time priority, partial fills, cancels)
 - [ ] Friction stack interface: maker/taker fees, half-spread, latency, fixed per-trade cost
