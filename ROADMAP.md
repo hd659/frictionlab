@@ -23,7 +23,7 @@ Design principles
 - [x] Market maker with inventory risk (Avellaneda-Stoikov style)
 - [x] Informed trader + noise traders (Kyle 1985 / Glosten-Milgrom)
 - [x] Bayesian learner that updates beliefs from order flow
-- [ ] Bounded-rational agent: pays a cost per deliberation step (satisficing vs optimizing)
+- [x] Bounded-rational agent: pays a cost per deliberation step (satisficing vs optimizing)
 
 ## Phase 3: Market structures
 - [ ] Constant-product AMM and concentrated-liquidity AMM (port `amm_v3_legacy.py`)

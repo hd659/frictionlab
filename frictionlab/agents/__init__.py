@@ -7,6 +7,7 @@ from .base import (
     COST_SINK_ID, Action, ActionError, Agent, Cancel, MarketView, Submit, Venue,
 )
 from .bayesian import BayesianLearner, tick_grid, trade_likelihood
+from .bounded_rational import MODES, BoundedRationalAgent, Deliberation
 from .fundamental import FundamentalProcess
 from .informed import EdgeQuote, InformedTrader
 from .market_maker import ASQuote, AvellanedaStoikovMM
@@ -17,6 +18,7 @@ __all__ = [
     "COST_SINK_ID", "Action", "ActionError", "Agent", "Cancel", "MarketView",
     "Submit", "Venue",
     "BayesianLearner", "tick_grid", "trade_likelihood",
+    "MODES", "BoundedRationalAgent", "Deliberation",
     "FundamentalProcess",
     "EdgeQuote", "InformedTrader",
     "ASQuote", "AvellanedaStoikovMM",
