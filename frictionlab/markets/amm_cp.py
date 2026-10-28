@@ -142,25 +142,35 @@ class ConstantProductAMM:
         out = self.quote_exact_in(side, amount_in)
         if out < min_out:
             raise SwapRejected(f"slippage: out {out} < min_out {min_out}")
-        base, quote = (out, amount_in) if side is Side.BUY else (amount_in, out)
-        price, rem = divmod(quote, base)
-        if price < 1:
-            raise SwapRejected("average price below one tick")
-        trader = self.ledger[agent_id]
-        buyer, seller = (agent_id, self.pool_id) if side is Side.BUY else (self.pool_id, agent_id)
-        tid = self.ids()
-        trade = Trade(tid, time, price, base, tid, tid, buyer, seller, aggressor=side)
-        t_fill = fills_of(trade)[0 if side is Side.BUY else 1]
-        fee = self.frictions.charge(t_fill)
-        lg = self.ledger
-        if not lg.allow_overdraft:
-            need = quote + fee if side is Side.BUY else fee - quote
-            if trader.cash < need:
-                raise LedgerError(f"account {agent_id} cannot fund swap")
-        if not lg.allow_short and side is Side.SELL and trader.position < base:
-            raise LedgerError(f"account {agent_id} lacks inventory for swap")
-        rec = lg.settle(trade, fees=(fee, 0) if side is Side.BUY else (0, fee))
-        if rem:
-            lg.transfer(buyer, seller, rem)
         lp_fee = -(-amount_in * self.fee_bps // BPS_DENOM)
-        return SwapResult(tid, side, amount_in, out, lp_fee, fee, rec)
+        return settle_swap(self, agent_id, side, amount_in, out, lp_fee, time)
+
+
+def settle_swap(pool, agent_id: int, side: Side, amount_in: int, out: int, lp_fee: int,
+                time: float = 0.0) -> SwapResult:
+    """Book a priced swap between `agent_id` and `pool.pool_id` on `pool.ledger`.
+
+    Shared by every AMM venue (`pool` needs `ledger`, `pool_id`, `frictions`,
+    `ids`). All checks precede the first ledger mutation, so a raise leaves
+    the ledger untouched and the caller may commit its own state afterwards.
+    """
+    base, quote = (out, amount_in) if side is Side.BUY else (amount_in, out)
+    price, rem = divmod(quote, base)
+    if price < 1:
+        raise SwapRejected("average price below one tick")
+    lg = pool.ledger
+    trader = lg[agent_id]
+    buyer, seller = (agent_id, pool.pool_id) if side is Side.BUY else (pool.pool_id, agent_id)
+    tid = pool.ids()
+    trade = Trade(tid, time, price, base, tid, tid, buyer, seller, aggressor=side)
+    fee = pool.frictions.charge(fills_of(trade)[0 if side is Side.BUY else 1])
+    if not lg.allow_overdraft:
+        need = quote + fee if side is Side.BUY else fee - quote
+        if trader.cash < need:
+            raise LedgerError(f"account {agent_id} cannot fund swap")
+    if not lg.allow_short and side is Side.SELL and trader.position < base:
+        raise LedgerError(f"account {agent_id} lacks inventory for swap")
+    rec = lg.settle(trade, fees=(fee, 0) if side is Side.BUY else (0, fee))
+    if rem:
+        lg.transfer(buyer, seller, rem)
+    return SwapResult(tid, side, amount_in, out, lp_fee, fee, rec)
