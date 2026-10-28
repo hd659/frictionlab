@@ -24,6 +24,11 @@ Design principles
 - [x] Informed trader + noise traders (Kyle 1985 / Glosten-Milgrom)
 - [x] Bayesian learner that updates beliefs from order flow
 - [x] Bounded-rational agent: pays a cost per deliberation step (satisficing vs optimizing)
+- [x] Phase 2 examples: ZI-C efficiency under fees, adverse selection, decision cost (`examples/phase2_*.py`)
+- [x] Phase 2 write-up (`docs/phase2-agents.md`) and PnL breakdown helper (`frictionlab/analysis/pnl.py`)
+
+Phase 2 status: complete. Seeded examples show informed flow widening spreads and a
+step-cost threshold above which satisficers out-earn optimizers net of deliberation cost.
 
 ## Phase 3: Market structures
 - [ ] Constant-product AMM and concentrated-liquidity AMM (port `amm_v3_legacy.py`)
@@ -39,7 +44,7 @@ Design principles
 
 ## Phase 5: Experiments (each one a docs/ article + example)
 - [ ] Coase threshold: at what transaction cost does trading collapse?
-- [ ] Decision cost and over-analysis: when does a satisficer beat an optimizer?
+- [ ] Decision cost and over-analysis: when does a satisficer beat an optimizer? (Phase 2 seed: `examples/phase2_decision_cost.py`)
 - [ ] Adverse selection: how informed flow widens spreads
 - [ ] Fee tier wars between two venues
 - [ ] Funding-rate arbitrage under gas shocks

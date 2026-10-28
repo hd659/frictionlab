@@ -1,4 +1,4 @@
-# Phase 2: agents, and why informed flow widens spreads
+# Phase 2: agents, adverse selection and the cost of thinking
 
 Phase 2 adds agents that observe a `MarketView`, pay an explicit
 `decision_cost`, and emit typed `Submit` / `Cancel` intents that the `Venue`
@@ -16,10 +16,15 @@ executes and settles through the friction stack and ledger.
 | `frictionlab/analysis/spread.py` | time-weighted quoted spread, PnL by agent / type, markouts vs V(t) |
 | `examples/phase2_zi_efficiency.py` | ZI-C efficiency vs the competitive equilibrium as the taker fee rises |
 | `examples/phase2_adverse_selection.py` | quoted spread and PnL as the informed share rises |
+| `frictionlab/agents/bayesian.py` | Glosten-Milgrom posterior over V from trade signs |
+| `frictionlab/agents/bounded_rational.py` | satisficing vs optimizing search, metered per step |
+| `frictionlab/analysis/pnl.py` | per-agent PnL split into trading, fees and decision costs |
+| `examples/phase2_decision_cost.py` | satisficer vs optimizer net PnL as `cost_per_step` rises |
 
 ```bash
 python examples/phase2_zi_efficiency.py        # seed 11
 python examples/phase2_adverse_selection.py    # seed 7
+python examples/phase2_decision_cost.py        # seed 15
 ```
 
 ## 1. The adverse-selection problem
@@ -125,3 +130,106 @@ which does not depend on how inventory is marked at the end.
 - the maker's aggregate markout against informed flow is `<= 0`;
 - PnL by agent adds up to minus the fees and decision costs collected, because
   trading between agents is zero-sum before friction.
+
+## 5. Decision cost: when over-analysis loses to satisficing
+
+`examples/phase2_decision_cost.py` closes Phase 2. Four
+`BoundedRationalAgent`s (two buyers, two sellers, private valuations drawn
+from `[95_000, 105_000]` ticks) trade against a seeded ZI-C crowd. Each
+market is run twice on the same seed, once with the four agents satisficing and
+once with them optimizing. Valuations, the ZI crowd and the candidate price
+streams are the same in both runs, so the only thing that changes is how long
+the agents search. Each deliberation step costs `cost_per_step` ticks and is
+charged through the ledger's decision-cost sink.
+
+The accounting is done by `frictionlab.analysis.pnl`:
+
+    trading  = sum side * (valuation - price) * qty     (gross surplus)
+    net      = trading - fees - decision_costs
+
+`pnl_breakdown(result, mark)` takes a common mark (then `net` matches
+`pnl_by_agent`), a per-agent mapping, or a callable such as
+`lambda a: a.valuation`. `total` and `breakdown_by` sum the parts by group.
+
+Seed 15, 12 paired markets, `max_steps = 40`, aspiration 500 ticks:
+
+```
+ cost  sat_gross  sat_dec   sat_net  opt_gross  opt_dec   opt_net      winner
+    0    2730214        0   2730214    2738040        0   2738040  optimizing
+    1    2730214    79003   2651211    2738040    95800   2642240 satisficing
+    2    2730214   158006   2572208    2738040   191600   2546440 satisficing
+    4    2730214   316012   2414202    2738040   383200   2354840 satisficing
+    8    2730214   632024   2098190    2738040   766400   1971640 satisficing
+   16    2730214  1264048   1466166    2738040  1532800   1205240 satisficing
+```
+
+### The threshold
+
+Let `G_o, G_s` be gross surplus and `N_o, N_s` the step counts. Prices do not
+depend on the step cost (thinking is charged after the plan is formed), so
+
+    net_o - net_s = (G_o - G_s) - c * (N_o - N_s)
+
+and the satisficer wins once
+
+    c > c* = (G_o - G_s) / (N_o - N_s)
+
+i.e. once a step costs more than the marginal surplus that extra search
+produces. On seed 15 the optimizer spends 16_797 extra steps to earn 7_826
+extra ticks, about 0.47 ticks per step, so a cost of 1 tick per step already
+flips the ranking. Across seeds 1 to 30, the first swept cost at which the
+satisficer wins ranges from 0 to 8 ticks per step. The marginal return is small because:
+
+- the satisficer stops at a candidate that already clears the aspiration,
+  and the remaining candidates are random draws from the same window, so the
+  expected improvement from the maximum of a further sample is small (order
+  statistics flatten quickly);
+- the fill-probability model `exp(-kappa * d)` penalises the deep quotes that
+  would carry the largest surplus, so the best candidate is usually only a
+  little better than a good-enough one;
+- the ZI-C crowd sets the prices. Searching harder changes the agent's limit
+  price but not the prices that come back, so a lot of the extra effort goes
+  into small price changes that do not change whether an order fills.
+
+This is Simon's (1955) argument stated in the simulator's units. Optimizing
+is only rational if the cost of searching is ignored. Once search has a
+price, the right stopping rule is an aspiration level, and the right
+aspiration rises as the step cost rises.
+
+### Caveats
+
+- Zero-cost dominance holds in expectation, not on every seed. In 4 of 30
+  seeds the satisficer earns more gross surplus even at `c = 0`, because
+  quoting different prices changes the order of fills against the ZI crowd.
+  The per-decision guarantee in `test_bounded_rational.py` (the optimizer's
+  chosen expected surplus is at least the satisficer's) still holds. The
+  market outcome is a separate quantity and can differ from it.
+- `net_o - net_s` is linear in `c` with slope `-(N_o - N_s) < 0`, so after the
+  crossover the satisficer's lead only grows.
+
+## 6. Learning from order flow
+
+The same example ends with a `BayesianLearner` that watches a market it
+never trades in (its friction is prohibitive). A scanning liquidity
+provider quotes a 2-tick market at a random centre on `[80, 130]`, an
+informed trader with share `mu = 0.4` hits whichever side is mispriced against
+`V = 108`, and noise traders fill in the rest. Each print moves the posterior
+by the Glosten-Milgrom likelihood. On seed 15 the posterior mean moves
+98.6 -> 104.9 -> 108.4 and ends at 108.22 with sd 0.57 and MAP 108.
+
+Convergence needs prints on both sides of V. A maker that quotes only near
+its own belief generates trades that never test values far from that belief,
+and the posterior then settles in the wrong place. The scanning provider is
+there to supply prices across the whole grid.
+
+## 7. Tests for the decision-cost example
+
+`tests/test_pnl_breakdown.py` and `tests/test_example_phase2_decision_cost.py` check:
+
+- ledger invariants hold, and decision costs equal `cost * steps`;
+- the same seed reproduces identical sweeps and tapes;
+- at zero step cost the optimizer's net PnL is `>=` the satisficer's
+  (pinned seeds);
+- every sweep contains a step cost at which the satisficer's net PnL is
+  higher, and the gap grows monotonically with cost;
+- the learner's posterior ends within 1.5 ticks of V with sd below 1.5.
