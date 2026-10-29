@@ -5,10 +5,15 @@
 - `ConcentratedLiquidityAMM`: v3-style pool with liquidity on integer-tick
   ranges `[tick_lower, tick_upper)`; swaps cross initialized ticks and share the
   quote/swap interface and ledger settlement of the constant-product pool.
+- `PerpMarket`: perpetual futures venue; marks off its own book mid, reads an
+  index (e.g. `FundamentalProcess`) and settles a clamped periodic funding
+  rate in integer ticks through the ledger, remainders to a funding sink.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import MAX_TICK, MIN_TICK, ConcentratedLiquidityAMM, Position, SwapPlan
 from .amm_cp import BPS_DENOM, ConstantProductAMM, SwapRejected, SwapResult, settle_swap
+from .perp import PERP_SINK_ID, FundingEvent, PerpMarket
 
-__all__ = ["BPS_DENOM", "MAX_TICK", "MIN_TICK", "ConcentratedLiquidityAMM", "ConstantProductAMM",
-           "Position", "SwapPlan", "SwapRejected", "SwapResult", "settle_swap"]
+__all__ = ["BPS_DENOM", "MAX_TICK", "MIN_TICK", "PERP_SINK_ID", "ConcentratedLiquidityAMM",
+           "ConstantProductAMM", "FundingEvent", "PerpMarket", "Position", "SwapPlan",
+           "SwapRejected", "SwapResult", "settle_swap"]
