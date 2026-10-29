@@ -33,7 +33,7 @@ step-cost threshold above which satisficers out-earn optimizers net of deliberat
 ## Phase 3: Market structures
 - [x] Constant-product AMM and concentrated-liquidity AMM (port `amm_v3_legacy.py` -> `markets/amm_cl.py`)
 - [ ] Perpetual futures with funding rate
-- [ ] Cross-venue arbitrageur that only trades when net edge > total friction
+- [x] Cross-venue arbitrageur that only trades when net edge > total friction (`agents/arbitrageur.py`)
 - [ ] Batch auction vs continuous book comparison
 
 ## Phase 4: Analysis toolkit
