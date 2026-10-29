@@ -45,7 +45,7 @@ liquidity), and funding holding a perp's mark near index against one-sided flow.
 ## Phase 4: Analysis toolkit
 - [ ] Metrics: realized spread, price impact, price efficiency, welfare / surplus, PnL by agent type
 - [x] Parameter sweeps over friction levels with parallel runs (`analysis/sweep.py`)
-- [ ] Equilibrium detection (strategy mix stabilization, replicator dynamics)
+- [x] Equilibrium detection (strategy mix stabilization, replicator dynamics) (`analysis/equilibrium.py`)
 - [ ] Plots and HTML report generator
 
 ## Phase 5: Experiments (each one a docs/ article + example)

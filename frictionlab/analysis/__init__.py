@@ -14,7 +14,14 @@
 - `sweep`: seeded (SeedSequence-spawned) parameter sweeps over friction
   levels, serial or process-parallel with identical rows, plus per-cell
   mean/std aggregation and a pandas-free CSV writer.
+- `equilibrium`: discrete replicator dynamics over agent archetypes, with
+  payoff-matrix or simulated (sweep-engine) fitness, largest-remainder agent
+  counts and a stabilization / extinction detector.
 """
+from .equilibrium import (
+    EquilibriumResult, SimulatedFitness, StabilityDetector, as_simplex, evolve,
+    largest_remainder, matrix_fitness, mean_net_by_type, replicator_step,
+)
 from .metrics import (
     EfficiencyStats, MidPath, SpreadDecomposition, TradeMetrics, TradeRecord, decompose,
     impact_by_size, price_efficiency, spread_decomposition, trade_records, variance_ratio,
@@ -44,4 +51,6 @@ __all__ = [
     "welfare",
     "FRICTION_KEYS", "SweepSpec", "aggregate", "expand_grid", "friction_stack",
     "run_sweep", "write_csv",
+    "EquilibriumResult", "SimulatedFitness", "StabilityDetector", "as_simplex", "evolve",
+    "largest_remainder", "matrix_fitness", "mean_net_by_type", "replicator_step",
 ]
