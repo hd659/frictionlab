@@ -17,6 +17,8 @@
 - `equilibrium`: discrete replicator dynamics over agent archetypes, with
   payoff-matrix or simulated (sweep-engine) fitness, largest-remainder agent
   counts and a stabilization / extinction detector.
+- `plots` / `scales`: dependency-free, byte-deterministic SVG charts
+  (line, multi-line, bar, heatmap) with nice-tick linear scales.
 """
 from .equilibrium import (
     EquilibriumResult, SimulatedFitness, StabilityDetector, as_simplex, evolve,
@@ -26,11 +28,13 @@ from .metrics import (
     EfficiencyStats, MidPath, SpreadDecomposition, TradeMetrics, TradeRecord, decompose,
     impact_by_size, price_efficiency, spread_decomposition, trade_records, variance_ratio,
 )
+from .plots import bar_chart, heatmap, line_chart, multi_line_chart
 from .pnl import PnLBreakdown, breakdown_by, pnl_breakdown, total
 from .spread import (
     QuoteRecorder, SpreadStats, markout_pnl, pnl_by_agent, pnl_by_type,
     spread_stats, volume_between,
 )
+from .scales import LinearScale, extent, format_tick, nice_ticks, ramp
 from .sweep import (
     FRICTION_KEYS, SweepSpec, aggregate, expand_grid, friction_stack, run_sweep, write_csv,
 )
@@ -53,4 +57,6 @@ __all__ = [
     "run_sweep", "write_csv",
     "EquilibriumResult", "SimulatedFitness", "StabilityDetector", "as_simplex", "evolve",
     "largest_remainder", "matrix_fitness", "mean_net_by_type", "replicator_step",
+    "bar_chart", "heatmap", "line_chart", "multi_line_chart",
+    "LinearScale", "extent", "format_tick", "nice_ticks", "ramp",
 ]
