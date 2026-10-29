@@ -19,6 +19,9 @@
   counts and a stabilization / extinction detector.
 - `plots` / `scales`: dependency-free, byte-deterministic SVG charts
   (line, multi-line, bar, heatmap) with nice-tick linear scales.
+- `report` / `report_sections`: one self-contained offline HTML file (embedded
+  CSS, inlined SVG, no JS or URLs) built from typed Metrics / Sweep /
+  Equilibrium / PnL sections, with seed, grid and version in the header.
 """
 from .equilibrium import (
     EquilibriumResult, SimulatedFitness, StabilityDetector, as_simplex, evolve,
@@ -30,6 +33,10 @@ from .metrics import (
 )
 from .plots import bar_chart, heatmap, line_chart, multi_line_chart
 from .pnl import PnLBreakdown, breakdown_by, pnl_breakdown, total
+from .report import Report, frictionlab_version, write_report
+from .report_sections import (
+    EquilibriumSection, MetricsSection, PnLSection, Section, SweepSection,
+)
 from .spread import (
     QuoteRecorder, SpreadStats, markout_pnl, pnl_by_agent, pnl_by_type,
     spread_stats, volume_between,
@@ -59,4 +66,6 @@ __all__ = [
     "largest_remainder", "matrix_fitness", "mean_net_by_type", "replicator_step",
     "bar_chart", "heatmap", "line_chart", "multi_line_chart",
     "LinearScale", "extent", "format_tick", "nice_ticks", "ramp",
+    "Report", "frictionlab_version", "write_report",
+    "EquilibriumSection", "MetricsSection", "PnLSection", "Section", "SweepSection",
 ]

@@ -46,7 +46,7 @@ liquidity), and funding holding a perp's mark near index against one-sided flow.
 - [ ] Metrics: realized spread, price impact, price efficiency, welfare / surplus, PnL by agent type
 - [x] Parameter sweeps over friction levels with parallel runs (`analysis/sweep.py`)
 - [x] Equilibrium detection (strategy mix stabilization, replicator dynamics) (`analysis/equilibrium.py`)
-- [ ] Plots and HTML report generator
+- [x] Plots and HTML report generator (`analysis/plots.py`, `analysis/report.py`)
 
 ## Phase 5: Experiments (each one a docs/ article + example)
 - [ ] Coase threshold: at what transaction cost does trading collapse?
