@@ -35,6 +35,12 @@ step-cost threshold above which satisficers out-earn optimizers net of deliberat
 - [x] Perpetual futures with funding rate
 - [x] Cross-venue arbitrageur that only trades when net edge > total friction (`agents/arbitrageur.py`)
 - [x] Batch auction vs continuous book comparison (`markets/batch_auction.py`, `analysis/structure_compare.py`)
+- [x] Phase 3 example: book vs batch under latency, arbitrage band vs gas, perp funding (`examples/phase3_market_structures.py`)
+- [x] Phase 3 write-up (`docs/phase3-market-structures.md`)
+
+Phase 3 status: complete. Seeded runs show the batch auction cutting the sniping share
+at high latency, the no-arbitrage band widening with gas (more slowly for concentrated
+liquidity), and funding holding a perp's mark near index against one-sided flow.
 
 ## Phase 4: Analysis toolkit
 - [ ] Metrics: realized spread, price impact, price efficiency, welfare / surplus, PnL by agent type
