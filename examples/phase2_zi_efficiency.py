@@ -11,12 +11,17 @@ smaller than the round-trip friction drop out: a Coase threshold on one tape.
     efficiency     = realized gains from trade / CE surplus      (allocation)
     net_efficiency = (gains - fees - decision costs) / CE surplus (welfare)
 
-    python examples/phase2_zi_efficiency.py [seed]
+The fee levels run through `frictionlab.analysis.sweep`: each level is one
+sweep cell, pinned to the config seed (common random numbers), so every
+level sees the same schedules and the printed table is unchanged.
+
+    python examples/phase2_zi_efficiency.py [seed] [n_workers]
 """
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from functools import partial
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -26,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # run from a check
 
 from frictionlab.agents import ZICTrader
 from frictionlab.agents.base import Cancel, MarketView
+from frictionlab.analysis.sweep import SweepSpec, friction_stack, run_sweep
 from frictionlab.core.runner import MarketRunner, RunResult
 from frictionlab.core.types import Side
 from frictionlab.costs import Fill, FrictionStack, MakerTakerFee, Role
@@ -114,12 +120,18 @@ def _no_feasible_trade(runner: MarketRunner) -> bool:
     return not open_bids or not open_asks or max(open_bids) < min(open_asks)
 
 
-def run(cfg: Config = Config(), taker_bps: int = 0) -> Dict[str, float]:
-    stack = FrictionStack([MakerTakerFee(maker_bps=0, taker_bps=taker_bps)])
+def build(cfg: Config, params: Dict[str, int], seed: int) -> MarketRunner:
+    """Sweep factory: one seeded ZI-C market under the cell's frictions."""
+    cfg = replace(cfg, seed=seed)
+    stack = friction_stack(params)
     agents = population(cfg, stack)
     endow = {a.agent_id: (0, a.n_units if a.side is Side.SELL else 0) for a in agents}
-    runner = MarketRunner(agents, stack, seed=cfg.seed, endowments=endow)
-    res = runner.run(max_wakeups=cfg.max_wakeups, stop_when=_no_feasible_trade)
+    return MarketRunner(agents, stack, seed=cfg.seed, endowments=endow)
+
+
+def zi_metrics(res: RunResult) -> Dict[str, float]:
+    """Sweep metrics: allocation vs the CE benchmark, net of friction."""
+    agents = list(res.agents.values())
     buyers = [a for a in agents if a.side is Side.BUY]
     sellers = [a for a in agents if a.side is Side.SELL]
     q_ce, s_ce, p_ce = equilibrium([v for a in buyers for v in a.schedule],
@@ -128,7 +140,7 @@ def run(cfg: Config = Config(), taker_bps: int = 0) -> Dict[str, float]:
              - sum(sum(a.schedule[:_traded(res, a)]) for a in sellers))
     volume = sum(t.qty for t in res.trades)
     prices = [t.price for t in res.trades]
-    return {"bps": taker_bps, "volume": volume, "q_ce": q_ce, "surplus_ce": s_ce,
+    return {"volume": volume, "q_ce": q_ce, "surplus_ce": s_ce,
             "p_ce_lo": p_ce[0], "p_ce_hi": p_ce[1], "gains": gains,
             "fees": res.fees, "decision_costs": res.decision_costs,
             "efficiency": gains / s_ce if s_ce else 0.0,
@@ -137,8 +149,26 @@ def run(cfg: Config = Config(), taker_bps: int = 0) -> Dict[str, float]:
             "wakeups": res.wakeups}
 
 
-def sweep(cfg: Config = Config(), levels: Sequence[int] = FEE_LEVELS) -> List[Dict[str, float]]:
-    return [run(cfg, bps) for bps in levels]
+def spec(cfg: Config = Config(), levels: Sequence[int] = FEE_LEVELS) -> SweepSpec:
+    return SweepSpec(partial(build, cfg), zi_metrics,
+                     cells=[{"taker_bps": int(b)} for b in levels], seeds=[cfg.seed],
+                     run_kwargs={"max_wakeups": cfg.max_wakeups,
+                                 "stop_when": _no_feasible_trade})
+
+
+def sweep(cfg: Config = Config(), levels: Sequence[int] = FEE_LEVELS,
+          n_workers: int = 1) -> List[Dict[str, float]]:
+    out = []
+    for row in run_sweep(spec(cfg, levels), n_workers=n_workers):
+        if row["error"] is not None:
+            raise RuntimeError(f"taker_bps={row['taker_bps']}: {row['error']}")
+        drop = ("cell", "replicate", "seed", "error", "taker_bps")
+        out.append({"bps": row["taker_bps"], **{k: v for k, v in row.items() if k not in drop}})
+    return out
+
+
+def run(cfg: Config = Config(), taker_bps: int = 0) -> Dict[str, float]:
+    return sweep(cfg, (taker_bps,))[0]
 
 
 def report(rows: Sequence[Dict[str, float]]) -> str:
@@ -157,7 +187,7 @@ def report(rows: Sequence[Dict[str, float]]) -> str:
 def main(argv: Optional[List[str]] = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     cfg = Config(seed=int(argv[0])) if argv else Config()
-    rows = sweep(cfg)
+    rows = sweep(cfg, n_workers=int(argv[1]) if len(argv) > 1 else 1)
     print(f"seed={cfg.seed} traders={cfg.n_buyers}x{cfg.n_sellers} units={cfg.n_units}")
     print(report(rows))
     return 0
