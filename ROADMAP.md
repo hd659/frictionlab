@@ -34,7 +34,7 @@ step-cost threshold above which satisficers out-earn optimizers net of deliberat
 - [x] Constant-product AMM and concentrated-liquidity AMM (port `amm_v3_legacy.py` -> `markets/amm_cl.py`)
 - [x] Perpetual futures with funding rate
 - [x] Cross-venue arbitrageur that only trades when net edge > total friction (`agents/arbitrageur.py`)
-- [ ] Batch auction vs continuous book comparison
+- [x] Batch auction vs continuous book comparison (`markets/batch_auction.py`, `analysis/structure_compare.py`)
 
 ## Phase 4: Analysis toolkit
 - [ ] Metrics: realized spread, price impact, price efficiency, welfare / surplus, PnL by agent type
