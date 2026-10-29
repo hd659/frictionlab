@@ -56,11 +56,16 @@ welfare non-increasing in the fee), finds the satisficer fixed point at high cos
 and writes a byte-reproducible offline HTML report.
 
 ## Phase 5: Experiments (each one a docs/ article + example)
-- [ ] Coase threshold: at what transaction cost does trading collapse?
+- [x] Experiment scaffold: `ExperimentResult` + `run_experiment` over the fl-023 sweep engine, report-ready (`experiments/base.py`)
+- [x] Coase threshold: at what transaction cost does trading collapse? (`experiments/coase.py`, `examples/phase5_coase_threshold.py`, `docs/phase5-coase-threshold.md`)
 - [ ] Decision cost and over-analysis: when does a satisficer beat an optimizer? (Phase 2 seed: `examples/phase2_decision_cost.py`)
 - [ ] Adverse selection: how informed flow widens spreads
 - [ ] Fee tier wars between two venues
 - [ ] Funding-rate arbitrage under gas shocks
+
+Phase 5 status: in progress. Coase threshold done: on a fixed 6x6 ZI-C schedule volume
+falls one unit at a time as F = 2*fixed + taker passes each binding pair gap, half-volume
+collapse at F* = 66 ticks (seed 28), and zero volume above the 100-tick analytic bound.
 
 ## Phase 6: Ecosystem
 - [ ] CLI (`frictionlab run config.yaml`)
