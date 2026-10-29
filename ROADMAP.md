@@ -43,10 +43,17 @@ at high latency, the no-arbitrage band widening with gas (more slowly for concen
 liquidity), and funding holding a perp's mark near index against one-sided flow.
 
 ## Phase 4: Analysis toolkit
-- [ ] Metrics: realized spread, price impact, price efficiency, welfare / surplus, PnL by agent type
+- [x] Metrics: realized spread, price impact, price efficiency, welfare / surplus, PnL by agent type (`analysis/metrics.py`, `analysis/welfare.py`)
 - [x] Parameter sweeps over friction levels with parallel runs (`analysis/sweep.py`)
 - [x] Equilibrium detection (strategy mix stabilization, replicator dynamics) (`analysis/equilibrium.py`)
 - [x] Plots and HTML report generator (`analysis/plots.py`, `analysis/report.py`)
+- [x] Phase 4 example: fee x latency sweep, satisficer-vs-optimizer replicator, one HTML report (`examples/phase4_analysis_toolkit.py`)
+- [x] Phase 4 write-up (`docs/phase4-analysis-toolkit.md`)
+
+Phase 4 status: complete. One seeded run sweeps taker fee x latency over a ZI-C + maker +
+informed + noise market (effective = realized + impact on every trade, books close to zero,
+welfare non-increasing in the fee), finds the satisficer fixed point at high cost_per_step,
+and writes a byte-reproducible offline HTML report.
 
 ## Phase 5: Experiments (each one a docs/ article + example)
 - [ ] Coase threshold: at what transaction cost does trading collapse?
