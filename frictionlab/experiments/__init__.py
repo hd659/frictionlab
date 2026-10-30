@@ -13,7 +13,16 @@
   cost_per_step x aspiration grid; `find_break_even_cost` bisects for the
   smallest step cost at which the satisficer's mean net PnL wins, and
   `population` runs the fl-024 replicator at a given cost.
+- `adverse_selection`: `gm_zero_profit_spread` (analytic Glosten-Milgrom
+  break-even quotes) plus a maker / informed / noise market swept over
+  informed share x jump size, with maker PnL split into spread capture and
+  adverse selection, and a continuous-vs-batch mitigation run.
 """
+from .adverse_selection import (
+    Config as AdverseSelectionConfig, GMMaker, GMQuote, gm_zero_profit_spread, maker_split,
+    mitigation, run_grid as run_adverse_selection, run_study as run_adverse_selection_study,
+    study_report as adverse_selection_report,
+)
 from .base import ExperimentError, ExperimentResult, run_experiment
 from .coase import (
     CoaseThreshold, CoaseZIC, Config as CoaseConfig, coase_metrics, default_levels,
@@ -31,4 +40,7 @@ __all__ = [
     "default_levels", "find_coase_threshold", "max_volume", "run_coase", "split_friction",
     "BreakEven", "DecisionCostConfig", "find_break_even_cost", "population",
     "run_decision_cost", "run_decision_cost_study", "settled_share",
+    "AdverseSelectionConfig", "GMMaker", "GMQuote", "adverse_selection_report",
+    "gm_zero_profit_spread", "maker_split", "mitigation", "run_adverse_selection",
+    "run_adverse_selection_study",
 ]

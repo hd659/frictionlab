@@ -59,7 +59,7 @@ and writes a byte-reproducible offline HTML report.
 - [x] Experiment scaffold: `ExperimentResult` + `run_experiment` over the fl-023 sweep engine, report-ready (`experiments/base.py`)
 - [x] Coase threshold: at what transaction cost does trading collapse? (`experiments/coase.py`, `examples/phase5_coase_threshold.py`, `docs/phase5-coase-threshold.md`)
 - [x] Decision cost and over-analysis: when does a satisficer beat an optimizer? (`experiments/decision_cost.py`, `examples/phase5_decision_cost.py`, `docs/phase5-decision-cost.md`; Phase 2 seed: `examples/phase2_decision_cost.py`)
-- [ ] Adverse selection: how informed flow widens spreads
+- [x] Adverse selection: how informed flow widens spreads, vs the Glosten-Milgrom benchmark, and batch-auction mitigation (`experiments/adverse_selection.py`, `examples/phase5_adverse_selection.py`, `docs/phase5-adverse-selection.md`; Phase 2 seed: `examples/phase2_adverse_selection.py`)
 - [ ] Fee tier wars between two venues
 - [ ] Funding-rate arbitrage under gas shocks
 
@@ -69,6 +69,10 @@ collapse at F* = 66 ticks (seed 28), and zero volume above the 100-tick analytic
 Decision cost done: net PnL is linear in cost_per_step, so the satisficer wins iff
 dG < dS * c; bisection matches floor(dG / dS) + 1 exactly, with break-even c* = 9 / 5 / 5
 at aspiration 100 / 500 / 2000 (seed 29, max_steps 40).
+Adverse selection done: the analytic GM spread is 2 * mu * L with balanced noise; the
+simulated quoted spread tracks it plus a ~3-tick inventory term and is non-decreasing in
+mu at every jump size (seed 30). Maker PnL = spread capture + adverse selection exactly
+in ticks; at mu = 0.5, J = 8 the batch auction cuts AS loss per unit from 7.40 to 3.38.
 
 ## Phase 6: Ecosystem
 - [ ] CLI (`frictionlab run config.yaml`)
