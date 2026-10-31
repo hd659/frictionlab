@@ -17,6 +17,12 @@
   break-even quotes) plus a maker / informed / noise market swept over
   informed share x jump size, with maker PnL split into spread capture and
   adverse selection, and a continuous-vs-batch mitigation run.
+- `two_venue`: two fl-031 continuous books sharing one population; takers
+  routed by `VenueRouter`, makers choosing a venue each epoch by rebate net
+  of fl-030 adverse-selection loss, per-lot integer-tick `LotFee`s.
+- `fee_wars`: alternating venue best responses over a (maker, taker) fee
+  grid through the fl-023 engine, with `detect` reporting a pure fixed point
+  or an Edgeworth-style cycle (and its length).
 """
 from .adverse_selection import (
     Config as AdverseSelectionConfig, GMMaker, GMQuote, gm_zero_profit_spread, maker_split,
@@ -29,6 +35,11 @@ from .coase import (
     find_coase_threshold, friction_stack as coase_friction_stack, max_volume, run_coase,
     split_friction,
 )
+from .fee_wars import (
+    Config as FeeWarsConfig, Detection, best_response, detect, fee_grid, probe_seeds,
+    run_fee_wars, study_report as fee_wars_report,
+)
+from .two_venue import LotFee, MarketConfig as TwoVenueConfig, TwoVenueMarket, simulate as simulate_two_venue
 from .decision_cost import (
     BreakEven, Config as DecisionCostConfig, find_break_even_cost, population,
     run_decision_cost, run_study as run_decision_cost_study, settled_share,
@@ -43,4 +54,6 @@ __all__ = [
     "AdverseSelectionConfig", "GMMaker", "GMQuote", "adverse_selection_report",
     "gm_zero_profit_spread", "maker_split", "mitigation", "run_adverse_selection",
     "run_adverse_selection_study",
+    "Detection", "FeeWarsConfig", "LotFee", "TwoVenueConfig", "TwoVenueMarket", "best_response",
+    "detect", "fee_grid", "fee_wars_report", "probe_seeds", "run_fee_wars", "simulate_two_venue",
 ]

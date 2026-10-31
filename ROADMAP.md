@@ -60,7 +60,7 @@ and writes a byte-reproducible offline HTML report.
 - [x] Coase threshold: at what transaction cost does trading collapse? (`experiments/coase.py`, `examples/phase5_coase_threshold.py`, `docs/phase5-coase-threshold.md`)
 - [x] Decision cost and over-analysis: when does a satisficer beat an optimizer? (`experiments/decision_cost.py`, `examples/phase5_decision_cost.py`, `docs/phase5-decision-cost.md`; Phase 2 seed: `examples/phase2_decision_cost.py`)
 - [x] Adverse selection: how informed flow widens spreads, vs the Glosten-Milgrom benchmark, and batch-auction mitigation (`experiments/adverse_selection.py`, `examples/phase5_adverse_selection.py`, `docs/phase5-adverse-selection.md`; Phase 2 seed: `examples/phase2_adverse_selection.py`)
-- [ ] Fee tier wars between two venues
+- [x] Fee tier wars between two venues: Bertrand undercutting under a shared router, makers priced by rebate net of adverse selection (`experiments/fee_wars.py`, `experiments/two_venue.py`, `examples/phase5_fee_wars.py`, `docs/phase5-fee-wars.md`; building blocks: `markets/fee_tiers.py`, `markets/router.py`)
 - [ ] Funding-rate arbitrage under gas shocks
 
 Phase 5 status: in progress. Coase threshold done: on a fixed 6x6 ZI-C schedule volume
@@ -73,6 +73,11 @@ Adverse selection done: the analytic GM spread is 2 * mu * L with balanced noise
 simulated quoted spread tracks it plus a ~3-tick inventory term and is non-decreasing in
 mu at every jump size (seed 30). Maker PnL = spread capture + adverse selection exactly
 in ticks; at mu = 0.5, J = 8 the batch auction cuts AS loss per unit from 7.40 to 3.38.
+Fee tier wars done: two books share one routed population; alternating best responses
+over a 17-pair (maker, taker) tick grid undercut from (0, 4) on both venues to a pure
+fixed point at (-2, 3) / (-2, 3) by round 6 (seed 32), cutting trader friction from 4 to
+1 tick per lot with share_A = 0.47; revenue + rebates reconcile with sinks exactly.
+Remaining: funding-rate arbitrage under gas shocks.
 
 ## Phase 6: Ecosystem
 - [ ] CLI (`frictionlab run config.yaml`)
