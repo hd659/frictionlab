@@ -3,7 +3,8 @@
 Agents never mutate the book or ledger; they emit typed `Submit` / `Cancel`
 intents that the `Venue` executes and settles. The cross-venue arbitrageur
 adds `Swap` (AMM leg) and `ArbPair` (book leg + AMM leg) intents, executed by
-`core.runner.CrossVenue`.
+`core.runner.CrossVenue`. The funding arbitrageur reuses `ArbPair` for its
+delta-neutral perp + spot legs.
 """
 from .base import (
     COST_SINK_ID, Action, ActionError, Agent, Cancel, MarketView, Submit, Venue,
@@ -12,6 +13,7 @@ from .arbitrageur import (
     ArbPair, ArbQuote, CrossVenueArbitrageur, Swap, amm_leg, cp_optimal_size, min_quote_in,
 )
 from .bayesian import BayesianLearner, tick_grid, trade_likelihood
+from .funding_arb import BasisPosition, BasisQuote, FundingArbitrageur
 from .bounded_rational import MODES, BoundedRationalAgent, Deliberation
 from .fundamental import FundamentalProcess
 from .informed import EdgeQuote, InformedTrader
@@ -25,6 +27,7 @@ __all__ = [
     "ArbPair", "ArbQuote", "CrossVenueArbitrageur", "Swap", "amm_leg", "cp_optimal_size",
     "min_quote_in",
     "BayesianLearner", "tick_grid", "trade_likelihood",
+    "BasisPosition", "BasisQuote", "FundingArbitrageur",
     "MODES", "BoundedRationalAgent", "Deliberation",
     "FundamentalProcess",
     "EdgeQuote", "InformedTrader",
