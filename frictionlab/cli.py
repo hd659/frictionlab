@@ -5,12 +5,17 @@
     frictionlab show-config examples/configs/coase_small.json --seed 7
     frictionlab run examples/configs/fee_wars_small.json --out runs/fee_wars \
         --set params.max_rounds=4
+    frictionlab bench --size small --json bench.json \
+        --compare benchmarks/baseline_small.json
 
 Overrides are applied in a fixed order: the config file, then flags (`--small`,
 `--seed`, `--workers`), then each `--set key.path=value` left to right. A `--set`
 value is parsed as JSON when it parses (`5`, `[0,10]`, `true`, `null`), else kept as
 a string. `--out` only picks the destination directory; it is not written into the
 resolved config, so artifacts are byte-identical wherever they are written.
+
+`bench` times the fl-038 scenarios and prints a table; `--compare` exits 1 on any
+checksum mismatch against the baseline (results changed), never on timing.
 
 Exit codes: 0 success, 2 config or usage error, 1 runtime error. Errors go to
 stderr with their dotted paths; tracebacks only with `--debug`. `main(argv)`
@@ -112,6 +117,27 @@ def cmd_run(args: argparse.Namespace) -> int:
     return OK
 
 
+def cmd_bench(args: argparse.Namespace) -> int:
+    from . import bench                                # lazy: keeps `run`/`list` startup lean
+    try:
+        names = bench.scenario_names(args.scenario or ())
+        baseline = bench.load_json(args.compare) if args.compare else None
+    except KeyError as e:
+        raise ConfigError([("--scenario", str(e.args[0]))]) from None
+    except (OSError, ValueError) as e:
+        raise ConfigError([("--compare", str(e))]) from None
+    res = bench.run_bench(names, args.size, warmup=args.warmup, repeat=args.repeat)
+    print(bench.format_table(res))
+    if args.json:
+        out = bench.checksums_only(res) if args.checksums_only else res
+        print(f"  wrote {bench.write_json(out, args.json)}")
+    if baseline is None:
+        return OK
+    cmp = bench.compare(res, baseline)
+    print(cmp.format())
+    return OK if cmp.ok else RUNTIME
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--debug", action="store_true", help="print tracebacks on errors")
@@ -139,6 +165,18 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("show-config", parents=[common, over],
                    help="print the fully resolved config as canonical JSON"
                    ).set_defaults(func=cmd_show_config)
+    b = sub.add_parser("bench", parents=[common], help="time the benchmark scenarios")
+    b.add_argument("--scenario", action="append", metavar="NAME",
+                   help="run only this scenario (repeatable; default: all)")
+    b.add_argument("--size", choices=("small", "medium"), default="small")
+    b.add_argument("--repeat", type=int, default=3, help="timed repeats (default 3)")
+    b.add_argument("--warmup", type=int, default=1, help="untimed warmup runs (default 1)")
+    b.add_argument("--json", metavar="PATH", help="write results as sorted-key JSON")
+    b.add_argument("--checksums-only", action="store_true",
+                   help="with --json: drop timings (baseline format)")
+    b.add_argument("--compare", metavar="BASELINE",
+                   help="diff against a result file; exit 1 on checksum mismatch")
+    b.set_defaults(func=cmd_bench)
     return p
 
 

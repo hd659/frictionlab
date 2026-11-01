@@ -1,0 +1,36 @@
+{
+  "scenarios": {
+    "amm_swap_stream": {
+      "checksum": "ce998dbb740f9747",
+      "ops": 2000,
+      "trades": 2000,
+      "volume": 213873
+    },
+    "batch_auction_clear": {
+      "checksum": "7d8b883e2890da27",
+      "ops": 2000,
+      "trades": 798,
+      "volume": 1152
+    },
+    "book_random_flow": {
+      "checksum": "f0b17196244e0f5d",
+      "ops": 3000,
+      "trades": 1369,
+      "volume": 2210
+    },
+    "runner_zi_market": {
+      "checksum": "eec48cda415e8ab1",
+      "ops": 1500,
+      "trades": 157,
+      "volume": 157
+    },
+    "sweep_coase_small": {
+      "checksum": "bf3c9631d88d5658",
+      "ops": 3303,
+      "trades": 6,
+      "volume": 20
+    }
+  },
+  "schema": 1,
+  "size": "small"
+}

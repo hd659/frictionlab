@@ -84,6 +84,8 @@ five into one byte-reproducible HTML.
 - [x] CLI (`frictionlab run config.yaml`): stdlib argparse, `run` / `list` / `validate` / `show-config`; overrides file < `--small`/`--seed`/`--workers` < `--set key.path=value`; `run` writes `rows.csv`, `resolved_config.json`, `report.html`; exit 0 / 2 config-usage / 1 runtime; console script and `python -m frictionlab` (`cli.py`, `__main__.py`, `examples/configs/fee_wars_small.json`)
 - [x] Config schema and experiment registry: typed `ExperimentConfig` + per-experiment `Param` schemas, JSON (YAML with PyYAML), all errors reported at once with dotted paths; registry of the five Phase 5 experiments with defaults, small presets and `run_from_config` (`config/schema.py`, `experiments/registry.py`, `examples/configs/*.json`)
 - [ ] Benchmarks and performance work (vectorized book, optional numba)
+  - [x] Benchmark harness: five seeded scenarios (book flow, runner market, batch auction, AMM swaps, Coase sweep) at small/medium, warmup + repeats, min/median/max and ops/sec, deterministic work checksum, `compare` with speedup ratio; `frictionlab bench`; checksum-only `benchmarks/baseline_small.json` (`bench/`)
+  - [ ] Performance work measured against the baseline checksums
 - [ ] Documentation site, contribution guide, CI
 
 Phase 6 status: in progress. The config schema, registry and CLI are in: a JSON config
@@ -91,7 +93,9 @@ Phase 6 status: in progress. The config schema, registry and CLI are in: a JSON 
 preset, then user params), runs any of the five Phase 5 experiments with rows identical to
 the direct call, and records the resolved config in the fl-026 report header.
 `frictionlab run CONFIG --out DIR` writes byte-reproducible artifacts for a fixed seed;
-`validate` lists every bad dotted path in one pass. Next: benchmarks and performance work.
+`validate` lists every bad dotted path in one pass. The benchmark harness is in:
+`frictionlab bench --compare benchmarks/baseline_small.json` fails on any checksum drift, so
+optimizations must keep results identical. Next: performance work against that baseline.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.
