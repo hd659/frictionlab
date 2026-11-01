@@ -9,19 +9,76 @@ All charges are in tick-lots (price_ticks * lots), matching `Account.cash`.
 - LatencyCost   : `delay` seconds before an order is live, plus an expected
                   adverse move of `drift_ticks_per_sec * delay` per lot.
 - FixedCost     : flat charge per fill (gas, ticket fee, clearing fee).
+
+Integer fast path (fl-040)
+Every knob here is linear in the fill: raw_cost = (a*notional + b*qty + c) / den.
+When its parameters are integers (integer bps, integer spread ticks, ...),
+`int_terms(role)` returns that `(a, b, c, den)` tuple of ints and the charge is
+one exact integer division (`div_round`, same ceil as `venue_round`). With a
+non-integer parameter (e.g. 0.5 bps) `int_terms` returns None and the charge
+falls back to the exact `Fraction` path. Both paths give identical integers;
+tests/reference_fees.py freezes the pre-fl-040 Fraction code as the oracle.
 """
 from __future__ import annotations
 
 from fractions import Fraction
-from typing import Iterable, Union
+from typing import Iterable, Optional, Tuple, Union
 
-from .base import BOTH, TAKER_ONLY, CostModel, Fill, Number, Role, to_frac
+from .base import BOTH, TAKER_ONLY, CostModel, Fill, Number, Role, to_frac, venue_round
 
 BPS = Fraction(1, 10_000)
+BPS_DEN = 10_000
 Roles = Union[Role, Iterable[Role], str]
+Terms = Tuple[int, int, int, int]          # (per_notional, per_lot, per_fill, den)
+ZERO_TERMS: Terms = (0, 0, 0, 1)
+ROUNDING = "ceil"                          # must match base.venue_round
 
 
-class MakerTakerFee(CostModel):
+def div_round(num: int, den: int, mode: str = ROUNDING) -> int:
+    """Exact integer num/den rounded like `math.ceil` / `math.floor` of a Fraction."""
+    if den <= 0:
+        raise ValueError(f"den must be > 0, got {den}")
+    if mode == "ceil":
+        return -(-num // den)
+    if mode == "floor":
+        return num // den
+    raise ValueError(f"unknown rounding mode {mode!r}")
+
+
+def eval_terms(t: Terms, notional: int, qty: int) -> int:
+    """Rounded charge of linear terms `t` for one fill."""
+    a, b, c, d = t
+    return -(-(a * notional + b * qty + c) // d)
+
+
+def _int_or_none(x: Fraction) -> Optional[int]:
+    return x.numerator if x.denominator == 1 else None
+
+
+class LinearCost(CostModel):
+    """A knob whose charge is linear in (notional, qty, 1) per role."""
+
+    def _terms(self, role: Role) -> Optional[Terms]:
+        raise NotImplementedError
+
+    def int_terms(self, role: Role) -> Optional[Terms]:
+        """Integer terms for `role`, ZERO_TERMS if not covered, None if not exact-int.
+
+        Subclasses outside this module may override `raw_cost`, so only the
+        exact built-in types take the fast path; anything else stays on Fraction.
+        """
+        if type(self) not in FAST_TYPES:
+            return None
+        return self._terms(role) if role in self.roles else ZERO_TERMS
+
+    def charge(self, fill: Fill) -> int:
+        t = self.int_terms(fill.role)
+        if t is None:
+            return venue_round(self.raw_cost(fill)) if self.applies(fill) else 0
+        return eval_terms(t, int(fill.price) * int(fill.qty), int(fill.qty))
+
+
+class MakerTakerFee(LinearCost):
     name = "maker_taker"
 
     def __init__(self, maker_bps: Number = 0, taker_bps: Number = 0,
@@ -34,17 +91,24 @@ class MakerTakerFee(CostModel):
         if self.maker_bps + self.taker_bps < 0:
             raise ValueError("maker rebate exceeds taker fee: venue would lose money per trade")
 
+    def bps(self, role: Role) -> Fraction:
+        return self.maker_bps if role is Role.MAKER else self.taker_bps
+
     def rate(self, role: Role) -> Fraction:
-        return (self.maker_bps if role is Role.MAKER else self.taker_bps) * BPS
+        return self.bps(role) * BPS
 
     def raw_cost(self, fill: Fill) -> Fraction:
         return self.rate(fill.role) * fill.notional
+
+    def _terms(self, role: Role) -> Optional[Terms]:
+        k = _int_or_none(self.bps(role))
+        return None if k is None else (k, 0, 0, BPS_DEN)
 
     def __repr__(self) -> str:
         return f"MakerTakerFee(maker_bps={self.maker_bps}, taker_bps={self.taker_bps})"
 
 
-class HalfSpreadCost(CostModel):
+class HalfSpreadCost(LinearCost):
     name = "half_spread"
 
     def __init__(self, spread_ticks: Number, roles: Roles = TAKER_ONLY) -> None:
@@ -60,11 +124,15 @@ class HalfSpreadCost(CostModel):
     def raw_cost(self, fill: Fill) -> Fraction:
         return self.half_spread * fill.qty
 
+    def _terms(self, role: Role) -> Optional[Terms]:
+        k = _int_or_none(self.spread_ticks)
+        return None if k is None else (0, k, 0, 2)
+
     def __repr__(self) -> str:
         return f"HalfSpreadCost(spread_ticks={self.spread_ticks})"
 
 
-class LatencyCost(CostModel):
+class LatencyCost(LinearCost):
     name = "latency"
 
     def __init__(self, delay: Number, drift_ticks_per_sec: Number = 0,
@@ -82,11 +150,15 @@ class LatencyCost(CostModel):
     def raw_cost(self, fill: Fill) -> Fraction:
         return self.drift * self._delay * fill.qty
 
+    def _terms(self, role: Role) -> Optional[Terms]:
+        k = _int_or_none(self.drift * self._delay)
+        return None if k is None else (0, k, 0, 1)
+
     def __repr__(self) -> str:
         return f"LatencyCost(delay={float(self._delay)}, drift_ticks_per_sec={self.drift})"
 
 
-class FixedCost(CostModel):
+class FixedCost(LinearCost):
     name = "fixed"
 
     def __init__(self, per_trade: int, roles: Roles = BOTH) -> None:
@@ -98,5 +170,12 @@ class FixedCost(CostModel):
     def raw_cost(self, fill: Fill) -> Fraction:
         return self.per_trade
 
+    def _terms(self, role: Role) -> Optional[Terms]:
+        k = _int_or_none(self.per_trade)
+        return None if k is None else (0, 0, k, 1)
+
     def __repr__(self) -> str:
         return f"FixedCost(per_trade={self.per_trade})"
+
+
+FAST_TYPES = frozenset({MakerTakerFee, HalfSpreadCost, LatencyCost, FixedCost})

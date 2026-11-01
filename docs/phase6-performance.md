@@ -132,3 +132,118 @@ Next targets, each one guarded by the same checksums:
   divide evenly;
 - a cheaper `_check_int` (an exact-`int` fast path before the `Integral` ABC check);
 - the batch auction clear (the slowest scenario per op).
+
+fl-040 below handles the first two items.
+
+# Ledger and fee stack hot path (fl-040)
+
+fl-039's profile showed that settlement, not matching, dominated the book
+scenarios. fl-040 makes `Ledger.settle` and `FrictionStack.trade_fees` cheap
+and changes no results.
+
+## Integer basis-point fast path
+
+Every built-in knob is linear in the fill, so
+`raw_cost = (a * notional + b * qty + c) / den` with:
+
+| knob | a | b | c | den |
+|---|---:|---:|---:|---:|
+| `MakerTakerFee` | bps(role) | 0 | 0 | 10000 |
+| `HalfSpreadCost` | 0 | spread_ticks | 0 | 2 |
+| `LatencyCost` | 0 | drift * delay | 0 | 1 |
+| `FixedCost` | 0 | 0 | per_trade | 1 |
+
+`LinearCost.int_terms(role)` returns this tuple when the parameter is an integer.
+It returns `(0, 0, 0, 1)` when the role is not covered, and `None` otherwise
+(0.5 bps, 3/2 spread). `FrictionStack` folds the integer tuples of all
+components into one `(A, B, C, D)` per role over the lcm of the denominators.
+It does this once at construction or `add`, not per trade. One fill then costs
+`-(-(A * notional + B * qty + C) // D)`, which is exact integer ceil
+division. This is the same single venue-favourable rounding of the same exact sum
+that the Fraction path does, so a rebate still rounds toward zero and a fee
+still rounds up. `fees.div_round` exposes ceil and floor for other
+rounding modes.
+
+Only components with no integer terms fall back to `Fraction`: non-integer
+rates, `GasCost`, tiered `FeeComponent`, experiment-local knobs, and any
+subclass that overrides `raw_cost`. The fast path is enabled per exact type, so a
+subclass is never assumed to be linear. In a mixed stack the integer part is
+added to the slow parts as `Fraction(num, D)` before the single rounding. If
+something appends to `stack.models` directly, the stack recompiles its plan the
+next time it is evaluated. `charge_fraction` keeps the old path available for
+spot checks.
+
+## Ledger
+
+- `_int(name, v)` accepts `type(v) is int` with one identity test. Every other
+  value (numpy ints, bool, float, numpy floats) is passed to `types._check_int`,
+  so accepted values and error messages are byte-identical.
+- `settle` books both legs inline. `price` and `qty` were already validated
+  by `Trade.__post_init__`, and the fees by `_int`. It then checks
+  conservation once per trade: the buyer, seller and venue cash deltas sum to zero
+  and the positions net to zero. Before, every leg went through
+  `Account.apply_fill`, which repeated four `_check_int` calls and a
+  `Side(...)` coercion.
+- Strict mode (`Ledger(strict=True)` or `FRICTIONLAB_STRICT_LEDGER=1`) keeps the
+  per-leg path. It books through `apply_fill` and asserts each leg's cash,
+  position and fee delta separately. `check_every` (full invariant scan)
+  works the same as before in both modes.
+
+## How correctness is guarded
+
+1. **Frozen oracle.** `tests/reference_fees.py` freezes the pre-change
+   Fraction classes and stack evaluation. `tests/test_fee_fast_path.py` runs
+   40 seeds x 250 random fills (maker rebates down to `-taker`, odd qtys, and
+   prices placed within one tick of the `10000/bps` rounding boundary).
+   It checks `trade_fees`, per-fill `charge` and `round_trip` against the
+   oracle, then runs the same checks for non-integer rates, gas and tiered
+   components.
+2. **Same errors.** Bool, float, `np.float64`, `np.float32`, str and None
+   get the same `TypeError` text from `_int` as from `_check_int`, at every
+   ledger entry point, and the ledger is left untouched.
+3. **Strict vs default.** Seeded book flows and the `runner_zi_market`
+   scenario give identical balances, fee and volume counters and journals.
+   A leaking account is caught by both modes.
+4. **fl-038 checksums.** All small checksums equal
+   `benchmarks/baseline_small.json` in both modes, and the medium checksums
+   equal the pre-change tree.
+
+## Before / after
+
+Same machine. Pre-change tree from a `git worktree` at fl-039 HEAD, runs
+interleaved, `warmup=1, repeat=7`, median wall seconds averaged over two
+pairs. Checksums were identical in every row.
+
+| scenario | size | ops | before | after | speedup |
+|---|---|---:|---:|---:|---:|
+| book_random_flow | small | 3000 | 0.0284 | 0.0239 | 1.19x |
+| runner_zi_market | small | 1500 | 0.0136 | 0.0122 | 1.11x |
+| batch_auction_clear | small | 2000 | 0.0630 | 0.0580 | 1.09x |
+| amm_swap_stream | small | 2000 | 0.0197 | 0.0140 | 1.41x |
+| sweep_coase_small | small | 3303 | 0.0366 | 0.0367 | 1.00x |
+| book_random_flow | medium | 30000 | 0.2566 | 0.1746 | 1.47x |
+| runner_zi_market | medium | 15000 | 0.1194 | 0.1128 | 1.06x |
+| batch_auction_clear | medium | 10000 | 0.7368 | 0.7419 | 0.99x |
+| amm_swap_stream | medium | 20000 | 0.1940 | 0.1389 | 1.40x |
+| sweep_coase_small | medium | 32309 | 0.3483 | 0.3469 | 1.00x |
+
+In one after run, medium `sweep_coase_small` hit 0.42 s, a background-load
+outlier, so that "after" cell is the median of three runs. As in fl-039, treat
+changes under 10% as noise.
+
+Hot path only: 30000 pre-built trades over 8 accounts, median of 5.
+
+| path | stack | before | after | speedup |
+|---|---|---:|---:|---:|
+| `trade_fees` | 10 bps taker | 0.1204 | 0.0121 | 9.9x |
+| `trade_fees` | -1/7 bps + spread 1 + fixed 2 | 0.2024 | 0.0124 | 16.3x |
+| `Ledger.settle_all` | 10 bps taker | 0.2321 | 0.0495 | 4.7x |
+| `Ledger.settle_all` | -1/7 bps + spread 1 + fixed 2 | 0.3198 | 0.0509 | 6.3x |
+
+The fee hashes and venue revenue were identical before and after.
+
+The gains show up where trades settle through the stack: the book scenario
+and the AMM swap stream, whose pool fees go through `FrictionStack.charge`.
+`sweep_coase_small` settles only about 6 trades, and the batch auction is
+limited by its clearing loop, so both stay flat. The batch auction clear is
+still the next target.

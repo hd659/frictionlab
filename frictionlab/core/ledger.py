@@ -13,13 +13,35 @@ Accounting model (all integers, tick-lots for cash, lots for inventory)
 
 Settlement is atomic: all validation happens before any account is mutated,
 so a rejected trade leaves the ledger untouched. Each trade id settles once.
+
+Hot path (fl-040): integer arguments go through `_int`, a `type(v) is int`
+guard that defers to `types._check_int` (same errors) for anything else. A
+settlement books both legs inline and checks conservation once per trade
+(the three cash deltas sum to zero, positions net to zero). Strict mode
+(`strict=True` or env FRICTIONLAB_STRICT_LEDGER=1) books each leg through
+`Account.apply_fill` with full re-validation and checks each leg separately.
+Both modes produce identical balances.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Dict, Iterable, Iterator, List, Optional, Protocol, Tuple
 
 from .types import Account, Side, Trade, _check_int
+
+STRICT_ENV = "FRICTIONLAB_STRICT_LEDGER"
+
+
+def strict_from_env() -> bool:
+    return os.environ.get(STRICT_ENV, "").strip().lower() not in ("", "0", "false", "no", "off")
+
+
+def _int(name: str, v, *, nonneg: bool = False) -> int:
+    """Fast `_check_int`: exact ints skip the ABC checks; errors are unchanged."""
+    if type(v) is int and (not nonneg or v >= 0):
+        return v
+    return _check_int(name, v, nonneg=nonneg)
 
 
 class FeeSource(Protocol):
@@ -53,15 +75,16 @@ class Settlement:
 class Ledger:
     def __init__(self, frictions: Optional[FeeSource] = None, venue_id: int = 0, *,
                  allow_short: bool = True, allow_overdraft: bool = True,
-                 check_every: bool = False) -> None:
+                 check_every: bool = False, strict: Optional[bool] = None) -> None:
         if frictions is not None and not hasattr(frictions, "trade_fees"):
             from ..costs.stack import FrictionStack  # lazy: costs depends on core
             frictions = FrictionStack([frictions])  # bare CostModel -> 1-knob stack
         self.frictions = frictions
-        self.venue = Account(_check_int("venue_id", venue_id))
+        self.venue = Account(_int("venue_id", venue_id))
         self.allow_short = allow_short
         self.allow_overdraft = allow_overdraft
         self.check_every = check_every
+        self.strict = strict_from_env() if strict is None else bool(strict)
         self.accounts: Dict[int, Account] = {}
         self.journal: List[Settlement] = []
         self._settled: set = set()
@@ -71,7 +94,7 @@ class Ledger:
 
     # ---- accounts / external flows -----------------------------------
     def open_account(self, agent_id: int, cash: int = 0, position: int = 0) -> Account:
-        agent_id = _check_int("agent_id", agent_id)
+        agent_id = _int("agent_id", agent_id)
         if agent_id == self.venue.agent_id:
             raise LedgerError(f"agent_id {agent_id} is reserved for the venue")
         if agent_id in self.accounts:
@@ -87,7 +110,7 @@ class Ledger:
     def deposit(self, agent_id: int, cash: int = 0, position: int = 0) -> None:
         """External transfer in (negative = withdrawal)."""
         acct = self[agent_id]
-        cash, position = _check_int("cash", cash), _check_int("position", position)
+        cash, position = _int("cash", cash), _int("position", position)
         if not self.allow_overdraft and acct.cash + cash < 0:
             raise LedgerError(f"withdrawal overdraws account {agent_id}")
         if not self.allow_short and acct.position + position < 0:
@@ -103,7 +126,7 @@ class Ledger:
         Not an external flow: `cash_in` is untouched, so conservation holds.
         Atomic: validation precedes mutation.
         """
-        amount = _check_int("amount", amount, nonneg=True)
+        amount = _int("amount", amount, nonneg=True)
         a, b = self[src], self[dst]
         if a is b:
             raise LedgerError(f"transfer from account {src} to itself")
@@ -133,26 +156,43 @@ class Ledger:
         if self.frictions is None:
             return 0, 0
         bf, sf = self.frictions.trade_fees(trade)
-        return _check_int("buyer_fee", bf), _check_int("seller_fee", sf)
+        return _int("buyer_fee", bf), _int("seller_fee", sf)
 
     def settle(self, trade: Trade, fees: Optional[Tuple[int, int]] = None) -> Settlement:
         if trade.trade_id in self._settled:
             raise LedgerError(f"trade {trade.trade_id} already settled")
         buyer, seller = self[trade.buyer_id], self[trade.seller_id]
         bf, sf = self.fees_for(trade) if fees is None else (
-            _check_int("buyer_fee", fees[0]), _check_int("seller_fee", fees[1]))
-        n = trade.notional
+            _int("buyer_fee", fees[0]), _int("seller_fee", fees[1]))
+        price, qty = int(trade.price), int(trade.qty)  # Trade already validated both
+        n = price * qty
         if not self.allow_overdraft:
             if buyer.cash - n - bf < 0:
                 raise LedgerError(f"buyer {buyer.agent_id} cannot fund trade {trade.trade_id}")
             if seller.cash + n - sf < 0:
                 raise LedgerError(f"seller {seller.agent_id} cannot pay fee on {trade.trade_id}")
-        if not self.allow_short and seller.position < trade.qty:
+        if not self.allow_short and seller.position < qty:
             raise LedgerError(f"seller {seller.agent_id} lacks inventory for {trade.trade_id}")
 
-        buyer.apply_fill(Side.BUY, trade.price, trade.qty, bf)
-        seller.apply_fill(Side.SELL, trade.price, trade.qty, sf)
-        self.venue.cash += bf + sf
+        if self.strict:
+            self._book_strict(buyer, seller, price, qty, bf, sf)
+        else:
+            c0 = buyer.cash + seller.cash + self.venue.cash
+            p0 = buyer.position + seller.position
+            buyer.position += qty
+            buyer.cash -= n + bf
+            buyer.fees_paid += bf
+            buyer.volume += qty
+            buyer.n_trades += 1
+            seller.position -= qty
+            seller.cash += n - sf
+            seller.fees_paid += sf
+            seller.volume += qty
+            seller.n_trades += 1
+            self.venue.cash += bf + sf
+            if (buyer.cash + seller.cash + self.venue.cash != c0
+                    or buyer.position + seller.position != p0):
+                raise InvariantViolation(f"trade {trade.trade_id} not conserved")
         rec = Settlement(trade.trade_id, trade.time, trade.buyer_id, trade.seller_id,
                          trade.price, trade.qty, bf, sf)
         self.journal.append(rec)
@@ -160,6 +200,17 @@ class Ledger:
         if self.check_every:
             self.check()
         return rec
+
+    def _book_strict(self, buyer: Account, seller: Account,
+                     price: int, qty: int, bf: int, sf: int) -> None:
+        """Per-leg booking via `Account.apply_fill`, checking each leg's deltas."""
+        for acct, side, fee in ((buyer, Side.BUY, bf), (seller, Side.SELL, sf)):
+            c0, p0, f0 = acct.cash, acct.position, acct.fees_paid
+            acct.apply_fill(side, price, qty, fee)
+            if (acct.cash - c0 != -(side.value * price * qty + fee)
+                    or acct.position - p0 != side.value * qty or acct.fees_paid - f0 != fee):
+                raise InvariantViolation(f"leg {side.name} of account {acct.agent_id} mis-booked")
+            self.venue.cash += fee
 
     def settle_all(self, trades: Iterable[Trade]) -> List[Settlement]:
         return [self.settle(t) for t in trades]
