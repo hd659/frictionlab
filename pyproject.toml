@@ -1,9 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "frictionlab"
 version = "0.0.1"
 description = "Agent-based simulator for markets with friction"
+readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+yaml = ["pyyaml"]
+test = ["pytest"]
+
+[project.scripts]
+frictionlab = "frictionlab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["frictionlab*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,18 @@
+{
+  "experiment": "fee_wars",
+  "master_seed": 32,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "makers": [-2, -1, 0],
+    "takers": [1, 2, 3, 4],
+    "start_A": [0, 4],
+    "start_B": [0, 4],
+    "max_rounds": 6,
+    "window": 2,
+    "steps": 120,
+    "epoch": 20
+  }
+}
