@@ -10,60 +10,27 @@ Matching contract:
   "cancel_resting" drops the own resting order and keeps matching,
   "cancel_incoming" kills the aggressor's remainder.
 
+Storage (fl-039, see docs/phase6-performance.md): each side is a
+`book_levels.BookSide` -- integer-tick dict of FIFO deques plus a heapq
+best-price index with lazy deletion of emptied levels. `_live` indexes resting
+orders by id, so cancel is an O(1) lookup plus an O(1) level update.
 Cancelled orders are removed lazily from level queues; per-level aggregate
 quantity is maintained eagerly so depth queries are exact at all times.
+
+Results are byte-for-byte those of the pre-fl-039 sorted-list book, which is
+frozen as the oracle in tests/reference_order_book.py.
 """
 from __future__ import annotations
 
-import bisect
-from collections import deque
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
+from .book_levels import BookSide, depth_array
 from .types import IdGen, Order, OrderType, Side, Trade, _check_int
 
 STP_MODES = ("cancel_resting", "cancel_incoming")
-
-
-class _Half:
-    """One side of the book: sorted price keys + FIFO queue per level."""
-
-    def __init__(self, side: Side) -> None:
-        self.side = side
-        self._keys: List[int] = []  # ascending; bids stored negated
-        self.queues: Dict[int, Deque[Order]] = {}
-        self.qty: Dict[int, int] = {}
-
-    def _key(self, price: int) -> int:
-        return -price if self.side is Side.BUY else price
-
-    def best(self) -> Optional[int]:
-        return abs(self._keys[0]) if self._keys else None
-
-    def add(self, order: Order) -> None:
-        p = order.price
-        if p not in self.queues:
-            bisect.insort(self._keys, self._key(p))
-            self.queues[p] = deque()
-            self.qty[p] = 0
-        self.queues[p].append(order)
-        self.qty[p] += order.remaining
-
-    def head(self, price: int) -> Order:
-        q = self.queues[price]
-        while not q[0].is_active:  # lazy purge; qty>0 guarantees a live order
-            q.popleft()
-        return q[0]
-
-    def reduce(self, price: int, lots: int) -> None:
-        self.qty[price] -= lots
-        if self.qty[price] == 0:
-            del self.queues[price], self.qty[price]
-            i = bisect.bisect_left(self._keys, self._key(price))
-            del self._keys[i]
-
-    def levels(self, n: Optional[int] = None) -> List[Tuple[int, int]]:
-        keys = self._keys if n is None else self._keys[:n]
-        return [(abs(k), self.qty[abs(k)]) for k in keys]
+_BUY, _SELL, _LIMIT = Side.BUY, Side.SELL, OrderType.LIMIT
 
 
 class OrderBook:
@@ -73,18 +40,18 @@ class OrderBook:
             raise ValueError(f"stp must be one of {STP_MODES}, got {stp!r}")
         self.stp = stp
         self._tid = trade_ids or IdGen()
-        self._halves = {Side.BUY: _Half(Side.BUY), Side.SELL: _Half(Side.SELL)}
+        self._halves = {_BUY: BookSide(_BUY), _SELL: BookSide(_SELL)}
         self._live: Dict[int, Order] = {}
         self.trades: List[Trade] = []
 
     # ---- queries -------------------------------------------------------
     @property
     def best_bid(self) -> Optional[int]:
-        return self._halves[Side.BUY].best()
+        return self._halves[_BUY].best()
 
     @property
     def best_ask(self) -> Optional[int]:
-        return self._halves[Side.SELL].best()
+        return self._halves[_SELL].best()
 
     @property
     def spread(self) -> Optional[int]:
@@ -99,6 +66,15 @@ class OrderBook:
     def depth(self, side: Side, levels: Optional[int] = None) -> List[Tuple[int, int]]:
         """[(price, total_qty)] from best outward."""
         return self._halves[Side(side)].levels(levels)
+
+    def depth_array(self, side: Side, levels: Optional[int] = None) -> np.ndarray:
+        """int64 array of [price, qty, cumulative qty] rows from best outward.
+
+        Vectorised view of `depth` for MarketView-style depth queries (e.g.
+        lots available within k ticks); the numba kernel is opt-in via the
+        FRICTIONLAB_NUMBA env flag and never changes the integers returned.
+        """
+        return depth_array(self._halves[Side(side)], levels)
 
     def volume_at(self, side: Side, price: int) -> int:
         return self._halves[Side(side)].qty.get(price, 0)
@@ -121,7 +97,7 @@ class OrderBook:
             raise ValueError(f"order {order.order_id} is not active")
         trades = self._match(order)
         if order.is_active:
-            if order.otype is OrderType.LIMIT:
+            if order.otype is _LIMIT:
                 self._halves[order.side].add(order)
                 self._live[order.order_id] = order
             else:
@@ -148,27 +124,37 @@ class OrderBook:
         return lots
 
     def _match(self, taker: Order) -> List[Trade]:
-        opp = self._halves[taker.side.opposite]
+        tside = taker.side
+        opp = self._halves[tside.opposite]
+        live, tid, stp = self._live, self._tid, self.stp
+        is_buy = tside is _BUY
+        limit = taker.price
         trades: List[Trade] = []
         while taker.is_active:
             price = opp.best()
-            if price is None or not taker.crosses(price):
+            if price is None:
+                break
+            if limit is not None and (price > limit if is_buy else price < limit):
                 break
             maker = opp.head(price)
             if maker.agent_id == taker.agent_id:
-                if self.stp == "cancel_incoming":
+                if stp == "cancel_incoming":
                     taker.cancel()
                     break
                 self.cancel(maker.order_id)
                 continue
-            lots = min(taker.remaining, maker.remaining)
-            taker.fill(lots)
-            maker.fill(lots)
+            t_left = taker.qty - taker.filled
+            m_left = maker.qty - maker.filled
+            lots = t_left if t_left < m_left else m_left
+            taker.filled += lots  # == Order.fill(lots): 0 < lots <= remaining
+            maker.filled += lots
             opp.reduce(price, lots)
-            if not maker.is_active:
-                del self._live[maker.order_id]
-            buy, sell = (taker, maker) if taker.side is Side.BUY else (maker, taker)
-            trades.append(Trade(self._tid(), taker.time, price, lots,
-                                buy.order_id, sell.order_id,
-                                buy.agent_id, sell.agent_id, taker.side))
+            if lots == m_left:
+                del live[maker.order_id]
+            if is_buy:
+                trades.append(Trade(tid(), taker.time, price, lots, taker.order_id,
+                                    maker.order_id, taker.agent_id, maker.agent_id, tside))
+            else:
+                trades.append(Trade(tid(), taker.time, price, lots, maker.order_id,
+                                    taker.order_id, maker.agent_id, taker.agent_id, tside))
         return trades

@@ -86,6 +86,8 @@ five into one byte-reproducible HTML.
 - [ ] Benchmarks and performance work (vectorized book, optional numba)
   - [x] Benchmark harness: five seeded scenarios (book flow, runner market, batch auction, AMM swaps, Coase sweep) at small/medium, warmup + repeats, min/median/max and ops/sec, deterministic work checksum, `compare` with speedup ratio; `frictionlab bench`; checksum-only `benchmarks/baseline_small.json` (`bench/`)
   - [ ] Performance work measured against the baseline checksums
+    - [x] Vectorized book: integer-tick dict-of-deque levels, heapq best-price index with lazy level deletion, O(1) cancel by order id, `depth_array` int64 snapshots, optional numba kernel behind `FRICTIONLAB_NUMBA` with numpy fallback; pre-change book frozen as the oracle, all fl-038 checksums unchanged (`core/order_book.py`, `core/book_levels.py`, `tests/reference_order_book.py`, `docs/phase6-performance.md`)
+    - [ ] Ledger / fee-stack hot path (integer-bps fast path instead of `Fraction`, cheaper `_check_int`), batch auction clear
 - [ ] Documentation site, contribution guide, CI
 
 Phase 6 status: in progress. The config schema, registry and CLI are in: a JSON config
@@ -95,7 +97,12 @@ the direct call, and records the resolved config in the fl-026 report header.
 `frictionlab run CONFIG --out DIR` writes byte-reproducible artifacts for a fixed seed;
 `validate` lists every bad dotted path in one pass. The benchmark harness is in:
 `frictionlab bench --compare benchmarks/baseline_small.json` fails on any checksum drift, so
-optimizations must keep results identical. Next: performance work against that baseline.
+optimizations must keep results identical. The vectorized book is in: on 50 seeded
+random streams it matches the frozen pre-change oracle after every operation, every fl-038
+checksum is unchanged, and the book alone runs 1.20-1.32x faster (more with more live
+levels). End-to-end scenarios move only about 0-5%, because the profile is dominated by
+ledger settlement and `Fraction` fee arithmetic (`docs/phase6-performance.md`). Next:
+the ledger / fee-stack hot path against the same checksums.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.
