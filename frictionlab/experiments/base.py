@@ -13,6 +13,7 @@ and fl-026 report sections, so a Phase 5 article is a function of
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
@@ -34,6 +35,7 @@ class ExperimentResult:
     params: Dict[str, List[Any]]          # swept grid, key -> levels (stable order)
     rows: List[Row] = field(repr=False)   # tidy fl-023 rows, (cell, replicate) order
     findings: Dict[str, Any] = field(default_factory=dict)
+    config: Optional[Dict[str, Any]] = field(default=None, repr=False)  # resolved fl-036 config
 
     @property
     def param_keys(self) -> List[str]:
@@ -77,7 +79,14 @@ class ExperimentResult:
     def report(self, metric: Optional[str] = None, title: Optional[str] = None) -> Report:
         return Report(title or f"frictionlab experiment: {self.name}",
                       master_seed=self.master_seed, grid=self.params,
-                      meta={"experiment": self.name}, sections=self.sections(metric))
+                      meta=self.meta(), sections=self.sections(metric))
+
+    def meta(self) -> Dict[str, Any]:
+        """Report-header provenance; includes the resolved config when run from one."""
+        out: Dict[str, Any] = {"experiment": self.name}
+        if self.config is not None:
+            out["config"] = json.dumps(self.config, sort_keys=True)
+        return out
 
 
 def run_experiment(name: str, factory: Callable[[Dict[str, Any], int], Any],

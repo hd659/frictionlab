@@ -82,9 +82,15 @@ five into one byte-reproducible HTML.
 
 ## Phase 6: Ecosystem
 - [ ] CLI (`frictionlab run config.yaml`)
-- [ ] Config schema and experiment registry
+- [x] Config schema and experiment registry: typed `ExperimentConfig` + per-experiment `Param` schemas, JSON (YAML with PyYAML), all errors reported at once with dotted paths; registry of the five Phase 5 experiments with defaults, small presets and `run_from_config` (`config/schema.py`, `experiments/registry.py`, `examples/configs/*.json`)
 - [ ] Benchmarks and performance work (vectorized book, optional numba)
 - [ ] Documentation site, contribution guide, CI
+
+Phase 6 status: in progress. The config schema and registry are in: a JSON config
+(`examples/configs/coase_small.json`) resolves deterministically (defaults, then small
+preset, then user params), runs any of the five Phase 5 experiments with rows identical to
+the direct call, and records the resolved config in the fl-026 report header. Next: the CLI
+on top of `run_from_config`.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.

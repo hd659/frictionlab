@@ -1,0 +1,15 @@
+{
+  "experiment": "coase",
+  "master_seed": 28,
+  "n_workers": 1,
+  "replicates": 3,
+  "small": true,
+  "output": null,
+  "params": {
+    "values": [150, 140, 130, 120],
+    "costs": [70, 80, 90, 100],
+    "levels": [0, 14, 28, 42, 56, 70, 84],
+    "taker_share": 0.5,
+    "max_wakeups": 1500
+  }
+}

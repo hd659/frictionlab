@@ -1,0 +1,14 @@
+{
+  "experiment": "funding_arb",
+  "master_seed": 34,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "levels": [1, 5, 11, 58, 116],
+    "probs": [0.0, 0.3, 0.6],
+    "calm_gas": 1,
+    "decision_cost": 0
+  }
+}

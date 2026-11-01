@@ -29,6 +29,8 @@
   funding, friction breakdown, net PnL and mean |premium|.
   `entry_threshold_gas` is the analytic per-leg gas bound and
   `find_gas_threshold` bisects for the entry-collapse shock level.
+- `registry` (Phase 6): name -> runner, param schema and defaults for all five
+  experiments; `run_from_config` turns a JSON/YAML config into a result.
 """
 from .adverse_selection import (
     Config as AdverseSelectionConfig, GMMaker, GMQuote, gm_zero_profit_spread, maker_split,
@@ -49,6 +51,10 @@ from .funding_arb import (
     Config as FundingArbConfig, GasThreshold, InventoryMaker, RetailFlow, analytic_bound as funding_arb_bound,
     arb_metrics as funding_arb_metrics, entry_threshold_gas, find_gas_threshold, run_funding_arb,
 )
+from .registry import (
+    Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
+    register_experiment, resolve_config, run_from_config,
+)
 from .two_venue import LotFee, MarketConfig as TwoVenueConfig, TwoVenueMarket, simulate as simulate_two_venue
 from .decision_cost import (
     BreakEven, Config as DecisionCostConfig, find_break_even_cost, population,
@@ -68,4 +74,6 @@ __all__ = [
     "detect", "fee_grid", "fee_wars_report", "probe_seeds", "run_fee_wars", "simulate_two_venue",
     "FundingArbConfig", "GasThreshold", "InventoryMaker", "RetailFlow", "entry_threshold_gas",
     "find_gas_threshold", "funding_arb_bound", "funding_arb_metrics", "run_funding_arb",
+    "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
+    "register_experiment", "resolve_config", "run_from_config",
 ]
