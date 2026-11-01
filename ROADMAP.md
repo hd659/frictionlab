@@ -61,23 +61,24 @@ and writes a byte-reproducible offline HTML report.
 - [x] Decision cost and over-analysis: when does a satisficer beat an optimizer? (`experiments/decision_cost.py`, `examples/phase5_decision_cost.py`, `docs/phase5-decision-cost.md`; Phase 2 seed: `examples/phase2_decision_cost.py`)
 - [x] Adverse selection: how informed flow widens spreads, vs the Glosten-Milgrom benchmark, and batch-auction mitigation (`experiments/adverse_selection.py`, `examples/phase5_adverse_selection.py`, `docs/phase5-adverse-selection.md`; Phase 2 seed: `examples/phase2_adverse_selection.py`)
 - [x] Fee tier wars between two venues: Bertrand undercutting under a shared router, makers priced by rebate net of adverse selection (`experiments/fee_wars.py`, `experiments/two_venue.py`, `examples/phase5_fee_wars.py`, `docs/phase5-fee-wars.md`; building blocks: `markets/fee_tiers.py`, `markets/router.py`)
-- [ ] Funding-rate arbitrage under gas shocks
+- [x] Funding-rate arbitrage under gas shocks: basis band vs gas, two-regime shocks (`experiments/funding_arb.py`, `examples/phase5_funding_arb.py`, `docs/phase5-funding-arb.md`; building blocks: `costs/gas.py`, `agents/funding_arb.py`)
+- [x] Phase 5 summary report: all five experiments in one offline HTML (`examples/phase5_summary_report.py`)
 
-Phase 5 status: in progress. Coase threshold done: on a fixed 6x6 ZI-C schedule volume
-falls one unit at a time as F = 2*fixed + taker passes each binding pair gap, half-volume
-collapse at F* = 66 ticks (seed 28), and zero volume above the 100-tick analytic bound.
-Decision cost done: net PnL is linear in cost_per_step, so the satisficer wins iff
-dG < dS * c; bisection matches floor(dG / dS) + 1 exactly, with break-even c* = 9 / 5 / 5
-at aspiration 100 / 500 / 2000 (seed 29, max_steps 40).
-Adverse selection done: the analytic GM spread is 2 * mu * L with balanced noise; the
-simulated quoted spread tracks it plus a ~3-tick inventory term and is non-decreasing in
-mu at every jump size (seed 30). Maker PnL = spread capture + adverse selection exactly
-in ticks; at mu = 0.5, J = 8 the batch auction cuts AS loss per unit from 7.40 to 3.38.
-Fee tier wars done: two books share one routed population; alternating best responses
-over a 17-pair (maker, taker) tick grid undercut from (0, 4) on both venues to a pure
-fixed point at (-2, 3) / (-2, 3) by round 6 (seed 32), cutting trader friction from 4 to
-1 tick per lot with share_A = 0.47; revenue + rebates reconcile with sinks exactly.
-Remaining: funding-rate arbitrage under gas shocks.
+Phase 5 status: complete. Five seeded experiments, each one an `ExperimentResult`,
+an example with `--small` and a write-up; `examples/phase5_summary_report.py` reruns all
+five into one byte-reproducible HTML.
+- Coase threshold (seed 28): volume falls one unit at a time as F = 2*fixed + taker passes
+  each binding pair gap; half-volume collapse at F* = 66 ticks, zero above the 100-tick bound.
+- Decision cost (seed 29): net PnL is linear in cost_per_step; satisficer wins iff
+  dG < dS * c, break-even c* = 9 / 5 / 5 at aspiration 100 / 500 / 2000, matching bisection.
+- Adverse selection (seed 30): GM spread 2 * mu * L; simulated spread tracks it plus a
+  ~3-tick inventory term; at mu = 0.5, J = 8 the batch auction cuts AS loss per unit 7.40 -> 3.38.
+- Fee tier wars (seed 32): undercutting from (0, 4) to a pure fixed point at (-2, 3) on both
+  venues by round 6; trader friction 4 -> 1 tick per lot, share_A = 0.47.
+- Funding arbitrage (seed 34): entries 12 -> 4.5 and mean |premium| 27.3 -> 43.3 bps from
+  constant gas to shock gas 116 at p = 0.6 (pi_shock = 0.92); premium non-decreasing in shock
+  gas at every p; bisected collapse at 52 ticks vs the 115-tick analytic per-leg bound;
+  myopic calm-state entries held through shocks turn net arb PnL from +914 to -699 ticks.
 
 ## Phase 6: Ecosystem
 - [ ] CLI (`frictionlab run config.yaml`)
