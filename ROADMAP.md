@@ -83,29 +83,30 @@ five into one byte-reproducible HTML.
 ## Phase 6: Ecosystem
 - [x] CLI (`frictionlab run config.yaml`): stdlib argparse, `run` / `list` / `validate` / `show-config`; overrides file < `--small`/`--seed`/`--workers` < `--set key.path=value`; `run` writes `rows.csv`, `resolved_config.json`, `report.html`; exit 0 / 2 config-usage / 1 runtime; console script and `python -m frictionlab` (`cli.py`, `__main__.py`, `examples/configs/fee_wars_small.json`)
 - [x] Config schema and experiment registry: typed `ExperimentConfig` + per-experiment `Param` schemas, JSON (YAML with PyYAML), all errors reported at once with dotted paths; registry of the five Phase 5 experiments with defaults, small presets and `run_from_config` (`config/schema.py`, `experiments/registry.py`, `examples/configs/*.json`)
-- [ ] Benchmarks and performance work (vectorized book, optional numba)
+- [x] Benchmarks and performance work (vectorized book, optional numba)
   - [x] Benchmark harness: five seeded scenarios (book flow, runner market, batch auction, AMM swaps, Coase sweep) at small/medium, warmup + repeats, min/median/max and ops/sec, deterministic work checksum, `compare` with speedup ratio; `frictionlab bench`; checksum-only `benchmarks/baseline_small.json` (`bench/`)
-  - [ ] Performance work measured against the baseline checksums
+  - [x] Performance work measured against the baseline checksums
     - [x] Vectorized book: integer-tick dict-of-deque levels, heapq best-price index with lazy level deletion, O(1) cancel by order id, `depth_array` int64 snapshots, optional numba kernel behind `FRICTIONLAB_NUMBA` with numpy fallback; pre-change book frozen as the oracle, all fl-038 checksums unchanged (`core/order_book.py`, `core/book_levels.py`, `tests/reference_order_book.py`, `docs/phase6-performance.md`)
     - [x] Ledger / fee-stack hot path: integer linear-term fast path folded once per stack (exact ceil division, `Fraction` fallback for non-integer rates), `type(x) is int` guard with identical errors, per-trade conservation check with per-leg strict mode behind `FRICTIONLAB_STRICT_LEDGER`; pre-change fees frozen as `tests/reference_fees.py`, all fl-038 checksums unchanged (`costs/fees.py`, `costs/stack.py`, `core/ledger.py`)
-    - [ ] Batch auction clear
+    - [x] Batch auction clear: one aggregation pass into integer-tick demand / supply maps, single sorted running-sum sweep over change points with the same tie-break order (max volume, min imbalance, closest to previous price, lower price), priority sort only for executable orders, unchanged pro-rata rounding; pre-change clear frozen as `tests/reference_batch_auction.py`, all fl-038 checksums unchanged, medium `batch_auction_clear` 3.9x (`markets/batch_auction.py`, `bench/scenarios.py` `DEEP_BATCH`)
 - [ ] Documentation site, contribution guide, CI
 
-Phase 6 status: in progress. The config schema, registry and CLI are in: a JSON config
+Phase 6 status: in progress (benchmarks and performance item done; documentation site,
+contribution guide and CI remain). The config schema, registry and CLI are in: a JSON config
 (`examples/configs/coase_small.json`) resolves deterministically (defaults, then small
 preset, then user params), runs any of the five Phase 5 experiments with rows identical to
 the direct call, and records the resolved config in the fl-026 report header.
 `frictionlab run CONFIG --out DIR` writes byte-reproducible artifacts for a fixed seed;
 `validate` lists every bad dotted path in one pass. The benchmark harness is in:
 `frictionlab bench --compare benchmarks/baseline_small.json` fails on any checksum drift, so
-optimizations must keep results identical. The vectorized book is in: on 50 seeded
-random streams it matches the frozen pre-change oracle after every operation, every fl-038
-checksum is unchanged, and the book alone runs 1.20-1.32x faster (more with more live
-levels). End-to-end scenarios move only about 0-5%, because the profile is dominated by
-ledger settlement and `Fraction` fee arithmetic (`docs/phase6-performance.md`). The
-ledger / fee-stack hot path is in. Fees run 10-16x faster, settlement 5-6x faster, and
-`book_random_flow` / `amm_swap_stream` run about 1.4x faster end to end at medium size.
-Results match the frozen Fraction oracle exactly. Next: the batch auction clear.
+optimizations must keep results identical. Performance work is closed out against those
+checksums, each step checked against a frozen pre-change oracle: the vectorized book
+(1.20-1.32x book-only), the ledger / fee-stack fast path (fees 10-16x, settlement 5-6x,
+`book_random_flow` / `amm_swap_stream` about 1.4x end to end) and the batch auction clear
+(a sorted sweep over aggregated ticks, `batch_auction_clear` 2.6x small / 3.9x medium).
+End-to-end time is now dominated by agent decision code and `MarketView` construction in the
+runner scenarios, and by order construction / validation in the book and AMM streams
+(`docs/phase6-performance.md`). Next: documentation site, contribution guide and CI.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.

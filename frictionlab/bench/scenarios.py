@@ -72,10 +72,11 @@ def _ledger(n_agents: int, cash: int = 10**7, position: int = 10**4) -> Ledger:
     return lg
 
 
-def _random_limit(rng, oid: int, n_agents: int, t: float, spread: int = 10) -> Order:
+def _random_limit(rng, oid: int, n_agents: int, t: float, spread: int = 10,
+                  mid: int = 100) -> Order:
     side = Side.BUY if rng.random() < 0.5 else Side.SELL
     off = int(rng.integers(0, spread + 1))
-    price = 100 - off if side is Side.BUY else 100 + off - spread // 2
+    price = mid - off if side is Side.BUY else mid + off - spread // 2
     return Order(oid, int(rng.integers(1, n_agents + 1)), side, int(rng.integers(1, 6)),
                  max(1, price), t)
 
@@ -119,13 +120,19 @@ def runner_zi_market(p: Dict[str, Any], seed: int) -> Work:
 
 
 def batch_auction_clear(p: Dict[str, Any], seed: int) -> Work:
-    """Seeded limit-order batches cleared at a uniform price, settled on a ledger."""
+    """Seeded limit-order batches cleared at a uniform price, settled on a ledger.
+
+    Optional `spread` / `mid` widen the price grid (defaults 10 / 100 are the
+    fl-038 workload whose checksums are pinned); `DEEP_BATCH` is a many-level
+    preset used by docs/phase6-performance.md and the fl-041 oracle test.
+    """
     rng, n = np.random.default_rng(seed), int(p["n_agents"])
-    lg, auc, ids = _ledger(n), BatchAuction(IdGen(), last_price=100), IdGen()
+    spread, mid = int(p.get("spread", 10)), int(p.get("mid", 100))
+    lg, auc, ids = _ledger(n), BatchAuction(IdGen(), last_price=mid), IdGen()
     per = int(p["orders_per_batch"])
     for b in range(int(p["n_batches"])):
         for _ in range(per):
-            auc.submit(_random_limit(rng, ids(), n, float(b)))
+            auc.submit(_random_limit(rng, ids(), n, float(b), spread, mid))
         lg.settle_all(auc.clear(float(b) + 0.5).trades)
     lg.check()
     tr = auc.trades
@@ -162,6 +169,11 @@ def sweep_coase_small(p: Dict[str, Any], seed: int) -> Work:
     bal = [(int(r["cell"]), int(r["replicate"]), int(r["friction_collected"])) for r in rows]
     return Work(sum(int(r["wakeups"]) for r in rows), len(rows),
                 sum(int(r["volume"]) for r in rows), bal)
+
+
+# Many price levels: ~600 distinct ticks, deep carried books (fl-041 docs and oracle test).
+DEEP_BATCH: Dict[str, Any] = {"n_batches": 250, "orders_per_batch": 40, "n_agents": 32,
+                              "spread": 400, "mid": 1000}
 
 
 SCENARIOS: Dict[str, Scenario] = {s.name: s for s in (

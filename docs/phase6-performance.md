@@ -247,3 +247,132 @@ and the AMM swap stream, whose pool fees go through `FrictionStack.charge`.
 `sweep_coase_small` settles only about 6 trades, and the batch auction is
 limited by its clearing loop, so both stay flat. The batch auction clear is
 still the next target.
+
+# Batch auction clear (fl-041)
+
+fl-040 left `batch_auction_clear` as the slowest scenario per op. Its
+profile was almost all `BatchAuction.clear`. Every clear re-sorted every live
+order on both sides by `(limit, time, id)` (`_orders`), and `clearing_price`
+then sorted the quotes again and ran two bisections per constant segment.
+The medium workload carries about 3500-7000 live orders per clear, so the sorts
+were the cost, not the price search.
+
+## What changed
+
+1. **One aggregation pass.** `clear` walks `_live` once and builds
+   `dem[price] -> lots`, `sup[price] -> lots` plus the market lots `mb` / `ms`.
+   No order is sorted in this pass.
+2. **Sorted sweep.** `_sweep` turns the maps into change points. D starts at
+   all bid lots and drops by `dem[b]` at `b + 1`. S starts at `sup[lo]` and
+   grows by `sup[a]` at `a`. One running-sum pass over the sorted change points
+   scores each constant segment once with `(V, -|D - S|)`. That gives the
+   segments the old code found. The integer closest to `ref` in the tied segments
+   wins, with the lower price on equal distance. The tie-break order is the same
+   as before: max volume, then min imbalance, then closest to the previous price.
+   Sorting covers distinct ticks only, so the cost is O(N + L log L) instead of
+   O(N log N) for N orders over L levels.
+3. **Sort only what can execute.** Allocation needs priority order only among
+   orders whose limit crosses p*. Those are sorted with side-specific keys
+   (`_bid_key`, `_ask_key`) that produce the old `_priority` order.
+   `pro_rata`, `_allocate` and the marginal-level rounding and remainder order
+   are unchanged.
+4. **Cheaper bookkeeping.** `_pair` keeps a cursor past exhausted sells
+   instead of rescanning from the head. With `carry=True` the post-clear sweep
+   removes only the orders that can have changed (markets, filled executable
+   limits, inactive). Non-executable limits are untouched by a clear, so the
+   result is the same set a full scan would remove. `depth` aggregates and sorts
+   distinct prices instead of sorting orders.
+
+A pure-Python running sum beats `numpy.cumsum` here. There are tens to a few
+hundred levels per batch, and building the arrays would cost more than the sum.
+
+## How correctness is guarded
+
+1. **Frozen oracle.** `tests/reference_batch_auction.py` holds the pre-change
+   clear verbatim. `tests/test_batch_auction_oracle.py` replays 30 seeds x 7
+   stream shapes (mixed, empty, bids-only, asks-only, all at one price,
+   symmetric multi-way ties, 400-tick wide) x both carry modes through both
+   auctions with twin orders. The streams include market orders, full and
+   partial cancels (some of dead ids) and agents that cross themselves. After
+   every clear the test compares price, volume, `n_orders`, every trade field,
+   every order's `filled` / `cancelled` / `qty`, the live set, both depths and
+   `last_price`.
+2. **Price search.** 3000 random quote sets (widths 1 to 300 ticks, market
+   orders, refs inside and outside the range, ten hand-picked edge cases) give
+   the same `(p*, V)` as the oracle. V also equals the brute-force maximum from
+   `tests/test_batch_auction.py`. This test found a sentinel bug in an early
+   draft: with only non-positive ticks, `max(..., default=0)` shifted `hi`.
+3. **Conservation.** Executed lots equal the clearing volume per batch. The
+   sum of `filled` over all orders equals twice the traded lots, so no units
+   are lost or created.
+4. **fl-038 checksums.** Every small checksum, plus ops / trades / volume,
+   equals `benchmarks/baseline_small.json`. The baseline file did not change,
+   and the medium checksums equal the fl-040 tree. The deep preset gives the
+   same checksum through the oracle and through the new auction.
+
+The medium `batch_auction_clear` workload already has 3500-7000 live orders
+per clear, so the speedup shows up there. No new registered scenario was
+needed and no baseline entry was added. `scenarios.DEEP_BATCH` (spread 400
+around 1000, about 600 distinct ticks) is an unregistered preset for the
+table below and the oracle test.
+
+## Before / after
+
+Same machine. The pre-change tree is a `git worktree` at fl-040 HEAD. Runs are
+interleaved, `warmup=1, repeat=7`, median wall seconds averaged over two
+pairs. Checksums were identical in every row.
+
+| scenario | size | ops | before | after | speedup |
+|---|---|---:|---:|---:|---:|
+| book_random_flow | small | 3000 | 0.0237 | 0.0228 | 1.04x |
+| runner_zi_market | small | 1500 | 0.0117 | 0.0121 | 0.97x |
+| batch_auction_clear | small | 2000 | 0.0577 | 0.0219 | 2.64x |
+| amm_swap_stream | small | 2000 | 0.0139 | 0.0140 | 0.99x |
+| sweep_coase_small | small | 3303 | 0.0359 | 0.0362 | 0.99x |
+| book_random_flow | medium | 30000 | 0.1706 | 0.1711 | 1.00x |
+| runner_zi_market | medium | 15000 | 0.1072 | 0.1087 | 0.99x |
+| batch_auction_clear | medium | 10000 | 0.7180 | 0.1838 | 3.91x |
+| amm_swap_stream | medium | 20000 | 0.1392 | 0.1398 | 1.00x |
+| sweep_coase_small | medium | 32309 | 0.3449 | 0.3455 | 1.00x |
+
+Batch clear in isolation. The oracle is "before", median of 5:
+
+| workload | before | after | speedup |
+|---|---:|---:|---:|
+| `DEEP_BATCH` (spread 400, ~600 ticks), full scenario | 0.8467 | 0.2026 | 4.18x |
+| `DEEP_BATCH` with spread 2000, full scenario | 1.0079 | 0.3036 | 3.32x |
+| `clearing_price` x200, 40 quotes/side, 21 ticks | 0.0041 | 0.0018 | 2.34x |
+| `clearing_price` x200, 400 quotes/side, 21 ticks | 0.0271 | 0.0054 | 5.04x |
+| `clearing_price` x200, 400 quotes/side, 801 ticks | 0.0826 | 0.0357 | 2.32x |
+| `clearing_price` x200, 4000 quotes/side, 4001 ticks | 0.8534 | 0.2976 | 2.87x |
+
+The price search gains the most when many quotes share few ticks, which is
+the case aggregation helps. Most of the scenario-level gain comes from not
+sorting the non-executable carried orders.
+
+## Closing summary: where end-to-end time goes now
+
+Phase 6 performance work is done for this round. Across fl-039..041, medium
+sizes against the fl-038 tree: `book_random_flow` about 1.5x,
+`amm_swap_stream` about 1.4x, `batch_auction_clear` about 4x, and
+`runner_zi_market` / `sweep_coase_small` roughly flat. Every checksum is
+unchanged. cProfile at medium size (cumulative share):
+
+- **book_random_flow:** `OrderBook.submit` 36% (`_match` 27%), the scenario's
+  `_random_limit` RNG and `Order.__post_init__` validation about 28% / 22%,
+  ledger settlement 17%. Order construction is now the largest single item.
+- **runner_zi_market / sweep_coase_small:** the event loop and agents
+  dominate: `Agent.step` 72-78%, `view` construction 18-26%, `execute` 19-26%,
+  Poisson scheduling about 11%. Matching and settlement are small slices, so the
+  next gains are in `MarketView` construction (depth snapshots per wakeup) and
+  in agent decision code, not in market mechanics.
+- **amm_swap_stream:** `settle_swap` 78%, of which `_check_int` and `Order` /
+  `Fill` validation are about a third. The constant-product math itself is cheap.
+- **batch_auction_clear:** `clear` 0.50 s of 0.81 s under the profiler. What
+  remains is the one aggregation pass over the carried orders (`remaining`
+  property calls, dict updates) and order construction in the scenario.
+
+Remaining candidates, none urgent: a cached per-wakeup `MarketView`, a
+lighter `Order` validation path for trusted internal construction, and an
+incremental batch-side aggregate maintained on submit / cancel. Each must keep
+the same checksums.

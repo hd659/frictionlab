@@ -8,18 +8,23 @@ volume is V(p) = min(D(p), S(p)) and
     p* = argmax V(p);  ties -> min |D(p) - S(p)| -> min |p - ref| -> lower p
 
 over the integers between the lowest and highest limit price. `ref` is the
-previous clearing price (first batch: midpoint of the tied region). D and S
-only change at b + 1 (bid limit b) and at s (ask limit s), so evaluating one
-point per constant segment, then the integer closest to `ref` inside each
-tied segment, is exact.
+previous clearing price (first batch: midpoint of the tied region).
+
+Clearing is one sorted sweep (fl-041). Bids and asks are aggregated into
+integer-tick demand / supply maps; D starts at all bid lots and drops by the
+lots at b when p passes b + 1, S grows by the lots at a when p reaches a, so
+cumulative demand (descending) and supply (ascending) are pure-Python running
+sums over the sorted change points. Each constant segment is scored once; the
+integer closest to `ref` inside the tied segments wins. The pre-fl-041 version
+is frozen in tests/reference_batch_auction.py and must agree exactly.
 
 Allocation walks each side from the most aggressive level (market first,
 then price; FIFO by arrival): better levels fill in full, the marginal level
 shares the remainder pro-rata, floor(R * q_i / Q) each plus one lot to the
 largest fractional remainders (ties: earlier arrival), so exactly V lots are
-allocated per side. Allocations are paired in priority order into `Trade`s
-at p*; the later arrival is the aggressor (taker) for fee purposes. Lots an
-agent would cross with its own order are netted out and left unexecuted.
+allocated per side. Only orders that can execute at p* are sorted. Allocations
+are paired in priority order into `Trade`s at p*; the later arrival is the
+aggressor (taker). Lots an agent would cross with itself are netted out.
 
 After a batch, market remainders are cancelled; limit remainders carry into
 the next batch with their arrival priority (`carry=True`) or are cancelled.
@@ -28,15 +33,14 @@ book trades; `batch_runner` drives it from `MarketRunner` on a fixed grid.
 """
 from __future__ import annotations
 
-from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
-from itertools import accumulate
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ..agents.base import Venue
 from ..core.types import IdGen, Order, OrderType, Side, Trade, _check_int
 
 Quote = Tuple[Optional[int], int]  # (limit price or None for market, lots)
+_INF = float("inf")
 
 
 @dataclass(frozen=True)
@@ -51,39 +55,70 @@ class Clearing:
 def _limit(o: Order) -> float:
     if o.price is not None:
         return o.price
-    return float("inf") if o.side is Side.BUY else 0.0
+    return _INF if o.side is Side.BUY else 0.0
 
 
-def _priority(o: Order):
-    return (-o.side.value * _limit(o), o.time, o.order_id)
+def _bid_key(o: Order):
+    return (-_INF if o.price is None else -o.price, o.time, o.order_id)
+
+
+def _ask_key(o: Order):
+    return (0.0 if o.price is None else o.price, o.time, o.order_id)
+
+
+def _sweep(dem: Dict[int, int], sup: Dict[int, int], mb: int, ms: int,
+           ref: Optional[int]) -> Tuple[Optional[int], int]:
+    """Clearing price from aggregated limit lots plus market lots `mb` / `ms`."""
+    if dem or sup:
+        keys = (dem.keys() | sup.keys()) if dem and sup else (dem or sup).keys()
+        lo, hi = min(keys), max(keys)
+    elif ref is None:
+        return None, 0
+    else:
+        lo = hi = ref
+    step: Dict[int, List[int]] = {}
+    for b, q in dem.items():
+        if b < hi:
+            step.setdefault(b + 1, [0, 0])[0] += q
+    for a, q in sup.items():
+        if a > lo:
+            step.setdefault(a, [0, 0])[1] += q
+    d, s = mb + sum(dem.values()), ms + sup.get(lo, 0)
+    best, tied, start = None, [], lo
+    for x in sorted(step) + [hi + 1]:
+        v = d if d < s else s
+        if v:
+            key = (v, -abs(d - s))
+            if best is None or key > best:
+                best, tied = key, [(start, x - 1)]
+            elif key == best:
+                tied.append((start, x - 1))
+        if x <= hi:
+            dd, ds = step[x]
+            d, s, start = d - dd, s + ds, x
+    if best is None:
+        return None, 0
+    r = ref if ref is not None else (tied[0][0] + tied[-1][1]) // 2
+    p = min((min(max(r, a), b) for a, b in tied), key=lambda c: (abs(c - r), c))
+    return p, best[0]
+
+
+def _aggregate(quotes: Sequence[Quote]) -> Tuple[Dict[int, int], int]:
+    agg: Dict[int, int] = {}
+    mkt = 0
+    for p, q in quotes:
+        if p is None:
+            mkt += q
+        else:
+            agg[p] = agg.get(p, 0) + q
+    return agg, mkt
 
 
 def clearing_price(bids: Sequence[Quote], asks: Sequence[Quote],
                    ref: Optional[int] = None) -> Tuple[Optional[int], int]:
     """(p*, V) for the batch; (None, 0) if no positive volume can execute."""
-    bl = sorted((p, q) for p, q in bids if p is not None)
-    al = sorted((p, q) for p, q in asks if p is not None)
-    mb = sum(q for p, q in bids if p is None)
-    ms = sum(q for p, q in asks if p is None)
-    prices = [p for p, _ in bl + al] or ([] if ref is None else [ref])
-    if not prices:
-        return None, 0
-    lo, hi = min(prices), max(prices)
-    bp, bsuf = [p for p, _ in bl], list(accumulate(q for _, q in reversed(bl)))[::-1] + [0]
-    ap, apre = [p for p, _ in al], [0] + list(accumulate(q for _, q in al))
-    D = lambda p: mb + bsuf[bisect_left(bp, p)]
-    S = lambda p: ms + apre[bisect_right(ap, p)]
-    starts = sorted({lo} | {p + 1 for p in bp if p + 1 <= hi} | {p for p in ap if p > lo})
-    segs = [(s, (starts[i + 1] - 1) if i + 1 < len(starts) else hi)
-            for i, s in enumerate(starts)]
-    score = {s: (-min(D(s), S(s)), abs(D(s) - S(s))) for s, _ in segs}
-    best = min(score.values())
-    if best[0] == 0:
-        return None, 0
-    tied = [(s, e) for s, e in segs if score[s] == best]
-    r = ref if ref is not None else (tied[0][0] + tied[-1][1]) // 2
-    p = min((min(max(r, s), e) for s, e in tied), key=lambda c: (abs(c - r), c))
-    return p, -best[0]
+    (dem, mb), (sup, ms) = _aggregate(bids), _aggregate(asks)
+    return _sweep(dem, sup, mb, ms, ref)
 
 
 def pro_rata(total: int, qtys: Sequence[int]) -> List[int]:
@@ -123,16 +158,14 @@ class BatchAuction:
         self.history: List[Clearing] = []
 
     # ---- queries (pending batch) --------------------------------------
-    def _orders(self, side: Side) -> List[Order]:
-        return sorted((o for o in self._live.values() if o.side is side and o.is_active),
-                      key=_priority)
-
     def depth(self, side: Side, levels: Optional[int] = None) -> List[Tuple[int, int]]:
-        agg: Dict[int, int] = {}
-        for o in self._orders(Side(side)):
-            if o.price is not None:
-                agg[o.price] = agg.get(o.price, 0) + o.remaining
-        out = list(agg.items())  # dicts keep priority order: best level first
+        side, agg = Side(side), {}
+        for o in self._live.values():
+            if o.side is side and o.price is not None:
+                q = o.remaining
+                if q > 0:
+                    agg[o.price] = agg.get(o.price, 0) + q
+        out = sorted(agg.items(), reverse=side is Side.BUY)  # best level first
         return out if levels is None else out[:levels]
 
     def _best(self, side: Side) -> Optional[int]:
@@ -184,34 +217,64 @@ class BatchAuction:
         return qty
 
     def clear(self, time: float) -> Clearing:
-        bids, asks = self._orders(Side.BUY), self._orders(Side.SELL)
-        n = len(bids) + len(asks)
-        p, vol = clearing_price([(o.price, o.remaining) for o in bids],
-                                [(o.price, o.remaining) for o in asks], self.last_price)
+        bids: List[Order] = []
+        asks: List[Order] = []
+        dem: Dict[int, int] = {}
+        sup: Dict[int, int] = {}
+        drop: List[Order] = []          # inactive or market: never carried
+        mb = ms = 0
+        buy = Side.BUY
+        for o in self._live.values():   # one pass: aggregate, no per-order sort
+            q, p = o.remaining, o.price
+            if q <= 0 or p is None:
+                drop.append(o)
+                if q <= 0:
+                    continue
+            if o.side is buy:
+                bids.append(o)
+                if p is None:
+                    mb += q
+                else:
+                    dem[p] = dem.get(p, 0) + q
+            else:
+                asks.append(o)
+                if p is None:
+                    ms += q
+                else:
+                    sup[p] = sup.get(p, 0) + q
+        p, vol = _sweep(dem, sup, mb, ms, self.last_price)
         trades: List[Trade] = []
         if vol:
-            buys = _allocate([o for o in bids if _limit(o) >= p], vol)
-            sells = _allocate([o for o in asks if _limit(o) <= p], vol)
-            trades = self._pair(buys, sells, p, float(time))
+            eb = sorted((o for o in bids if o.price is None or o.price >= p), key=_bid_key)
+            ea = sorted((o for o in asks if o.price is None or o.price <= p), key=_ask_key)
+            trades = self._pair(_allocate(eb, vol), _allocate(ea, vol), p, float(time))
+            drop += [o for o in eb + ea if o.price is not None and not o.is_active]
         if trades:
             self.last_price = p
-        for oid, o in list(self._live.items()):
-            if not o.is_active or o.otype is OrderType.MARKET or not self.carry:
-                o.cancel()
-                del self._live[oid]
+        # only non-executable limits are untouched by a clear, so with `carry` the
+        # drop list is exactly what a full scan of the live set would remove
+        for o in (list(self._live.values()) if not self.carry else drop):
+            o.cancel()
+            del self._live[o.order_id]
         self.trades.extend(trades)
         c = Clearing(float(time), p if trades else None, sum(t.qty for t in trades),
-                     n, tuple(trades))
+                     len(bids) + len(asks), tuple(trades))
         self.history.append(c)
         return c
 
     def _pair(self, buys, sells, p: int, time: float) -> List[Trade]:
         out: List[Trade] = []
+        k, n = 0, len(sells)      # sells[:k] are exhausted: lots only ever decrease
         for b in buys:
+            aid = b[0].agent_id
             while b[1]:
-                s = next((s for s in sells if s[1] and s[0].agent_id != b[0].agent_id), None)
-                own = s is None
-                s = s or next(s for s in sells if s[1])  # only own orders left: net out
+                while not sells[k][1]:
+                    k += 1
+                j = k
+                while j < n and (not sells[j][1] or sells[j][0].agent_id == aid):
+                    j += 1
+                own = j == n
+                s = sells[k] if own else sells[j]  # only own orders left: net out
                 lots = min(b[1], s[1])
                 b[1] -= lots
                 s[1] -= lots
@@ -222,7 +285,7 @@ class BatchAuction:
                 so.fill(lots)
                 aggr = Side.BUY if (bo.time, bo.order_id) > (so.time, so.order_id) else Side.SELL
                 out.append(Trade(self._tid(), time, p, lots, bo.order_id, so.order_id,
-                                 bo.agent_id, so.agent_id, aggr))
+                                 aid, so.agent_id, aggr))
         return out
 
 
