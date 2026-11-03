@@ -90,9 +90,13 @@ five into one byte-reproducible HTML.
     - [x] Ledger / fee-stack hot path: integer linear-term fast path folded once per stack (exact ceil division, `Fraction` fallback for non-integer rates), `type(x) is int` guard with identical errors, per-trade conservation check with per-leg strict mode behind `FRICTIONLAB_STRICT_LEDGER`; pre-change fees frozen as `tests/reference_fees.py`, all fl-038 checksums unchanged (`costs/fees.py`, `costs/stack.py`, `core/ledger.py`)
     - [x] Batch auction clear: one aggregation pass into integer-tick demand / supply maps, single sorted running-sum sweep over change points with the same tie-break order (max volume, min imbalance, closest to previous price, lower price), priority sort only for executable orders, unchanged pro-rata rounding; pre-change clear frozen as `tests/reference_batch_auction.py`, all fl-038 checksums unchanged, medium `batch_auction_clear` 3.9x (`markets/batch_auction.py`, `bench/scenarios.py` `DEEP_BATCH`)
 - [ ] Documentation site, contribution guide, CI
+  - [x] CI: GitHub Actions on push / pull_request over Python 3.10-3.12 with pip caching; pytest, `frictionlab bench --size small --compare benchmarks/baseline_small.json` as a checksum-only gate (no timing thresholds), `python -m frictionlab validate` over every `examples/configs/*.json`; optional numba job (`FRICTIONLAB_NUMBA=1`) rerunning the order book oracle tests (`ci/ci.yml`)
+  - [x] Contribution guide: design principles (seeded reproducibility, integer ticks, one concept per 100-250 line module, tests with every module), local test / bench workflow, performance PR rule (checksums unchanged, oracle frozen under `tests/reference_*.py`), adding an experiment through the fl-036 registry, `type(scope): summary` commits (`CONTRIBUTING.md`)
+  - [x] Repo hygiene tests: workflow wiring (YAML parsed when PyYAML is present), ROADMAP doc links exist, `docs/index.md` links every `docs/phase*.md`, example configs validate, module line ceiling with an explicit capped allowlist, no personal URL hosts or absolute home paths in tracked text (`tests/test_repo_hygiene.py`)
+  - [ ] Documentation site: seeded by `docs/index.md`, which links every phase write-up in order; static site build and API reference remain
 
-Phase 6 status: in progress (benchmarks and performance item done; documentation site,
-contribution guide and CI remain). The config schema, registry and CLI are in: a JSON config
+Phase 6 status: in progress (benchmarks and performance item done; CI, contribution guide
+and repo hygiene tests are in; the documentation site build remains, seeded by `docs/index.md`). The config schema, registry and CLI are in: a JSON config
 (`examples/configs/coase_small.json`) resolves deterministically (defaults, then small
 preset, then user params), runs any of the five Phase 5 experiments with rows identical to
 the direct call, and records the resolved config in the fl-026 report header.
@@ -106,7 +110,9 @@ checksums, each step checked against a frozen pre-change oracle: the vectorized 
 (a sorted sweep over aggregated ticks, `batch_auction_clear` 2.6x small / 3.9x medium).
 End-to-end time is now dominated by agent decision code and `MarketView` construction in the
 runner scenarios, and by order construction / validation in the book and AMM streams
-(`docs/phase6-performance.md`). Next: documentation site, contribution guide and CI.
+(`docs/phase6-performance.md`). CI now runs the test suite, the checksum gate and config
+validation on Python 3.10-3.12 for every push, and `CONTRIBUTING.md` writes down the rules
+the earlier phases followed. Next: build the documentation site from `docs/index.md`.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.

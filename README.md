@@ -4,13 +4,28 @@ An agent-based simulator for markets with friction: fees, spreads, latency, gas,
 information asymmetry and the cost of deciding.
 
 Status: Phases 1-5 complete (core engine, agents, market structures, analysis toolkit, five
-seeded experiments). Phase 6 (ecosystem) is in progress: config schema, experiment registry
-and CLI are in. See [ROADMAP.md](ROADMAP.md).
+seeded experiments). Phase 6 (ecosystem) is in progress: config schema, experiment registry,
+CLI, benchmark harness, performance work, CI and the contribution guide are in. See
+[ROADMAP.md](ROADMAP.md), the write-ups in [docs/index.md](docs/index.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```bash
-pip install -e .            # add [yaml] for YAML configs, [test] for pytest
-pytest -q
+pip install -e ".[test]"     # add yaml for YAML configs: ".[test,yaml]"
+python -m pytest -q
 ```
+
+## Continuous integration
+
+`ci/ci.yml` runs on every push and pull request, on Python 3.10, 3.11 and 3.12:
+
+1. `python -m pytest -q`, which includes `tests/test_repo_hygiene.py` (workflow wiring,
+   doc links, example configs, module line ceiling, no personal URLs or home paths);
+2. `frictionlab bench --size small --compare benchmarks/baseline_small.json`, a gate on
+   checksums only (no timing thresholds);
+3. `python -m frictionlab validate` on every `examples/configs/*.json`.
+
+An optional job installs `numba`, sets `FRICTIONLAB_NUMBA=1` and reruns the order book
+oracle tests. Run the same steps locally before you open a PR (see CONTRIBUTING).
 
 ## CLI quickstart
 
@@ -75,4 +90,6 @@ From Python, `frictionlab.cli.main(argv)` returns the exit code instead of exiti
 - `frictionlab/experiments`: the five Phase 5 experiments and the registry
 - `frictionlab/config`: typed config schema and loader
 - `examples/`: one script per phase/experiment, plus `examples/configs/*.json`
-- `docs/`: one write-up per phase and experiment
+- `docs/`: one write-up per phase and experiment, indexed in `docs/index.md`
+- `benchmarks/`: checksum-only baseline for `frictionlab bench --compare`
+- `tests/reference_*.py`: frozen pre-optimisation oracles for the performance work
