@@ -94,9 +94,11 @@ five into one byte-reproducible HTML.
   - [x] Contribution guide: design principles (seeded reproducibility, integer ticks, one concept per 100-250 line module, tests with every module), local test / bench workflow, performance PR rule (checksums unchanged, oracle frozen under `tests/reference_*.py`), adding an experiment through the fl-036 registry, `type(scope): summary` commits (`CONTRIBUTING.md`)
   - [x] Repo hygiene tests: workflow wiring (YAML parsed when PyYAML is present), ROADMAP doc links exist, `docs/index.md` links every `docs/phase*.md`, example configs validate, module line ceiling with an explicit capped allowlist, no personal URL hosts or absolute home paths in tracked text (`tests/test_repo_hygiene.py`)
   - [ ] Documentation site: seeded by `docs/index.md`, which links every phase write-up in order; static site build and API reference remain
+    - [x] Static site build: stdlib Markdown subset (slugged headings, nested lists, fenced code, pipe tables, all text escaped), page order from `docs/index.md`, embedded-CSS layout with sidebar nav, prev/next and h2/h3 TOC, `.md` -> `.html` link rewriting, byte-reproducible output, `frictionlab docs build [--src docs] [--out DIR]` (`frictionlab/docs_site/`)
+    - [ ] API reference
 
 Phase 6 status: in progress (benchmarks and performance item done; CI, contribution guide
-and repo hygiene tests are in; the documentation site build remains, seeded by `docs/index.md`). The config schema, registry and CLI are in: a JSON config
+and repo hygiene tests are in; the static documentation site builds from `docs/index.md`; the API reference remains). The config schema, registry and CLI are in: a JSON config
 (`examples/configs/coase_small.json`) resolves deterministically (defaults, then small
 preset, then user params), runs any of the five Phase 5 experiments with rows identical to
 the direct call, and records the resolved config in the fl-026 report header.
@@ -112,7 +114,8 @@ End-to-end time is now dominated by agent decision code and `MarketView` constru
 runner scenarios, and by order construction / validation in the book and AMM streams
 (`docs/phase6-performance.md`). CI now runs the test suite, the checksum gate and config
 validation on Python 3.10-3.12 for every push, and `CONTRIBUTING.md` writes down the rules
-the earlier phases followed. Next: build the documentation site from `docs/index.md`.
+the earlier phases followed. `frictionlab docs build` now renders the pages linked from `docs/index.md` into a
+byte-reproducible static site with no JavaScript or external assets. Next: the API reference.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.

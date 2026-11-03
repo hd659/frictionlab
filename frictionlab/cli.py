@@ -7,6 +7,7 @@
         --set params.max_rounds=4
     frictionlab bench --size small --json bench.json \
         --compare benchmarks/baseline_small.json
+    frictionlab docs build --src docs --out site
 
 Overrides are applied in a fixed order: the config file, then flags (`--small`,
 `--seed`, `--workers`), then each `--set key.path=value` left to right. A `--set`
@@ -16,6 +17,8 @@ resolved config, so artifacts are byte-identical wherever they are written.
 
 `bench` times the fl-038 scenarios and prints a table; `--compare` exits 1 on any
 checksum mismatch against the baseline (results changed), never on timing.
+`docs build` renders the pages linked from `docs/index.md` into a static site; a
+missing index or linked page is a usage error (2).
 
 Exit codes: 0 success, 2 config or usage error, 1 runtime error. Errors go to
 stderr with their dotted paths; tracebacks only with `--debug`. `main(argv)`
@@ -138,6 +141,18 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return OK if cmp.ok else RUNTIME
 
 
+def cmd_docs_build(args: argparse.Namespace) -> int:
+    from .docs_site import DocsError, build_site       # lazy, like bench
+    try:
+        res = build_site(args.src, args.out)
+    except DocsError as e:
+        raise ConfigError([(e.path, e.message)]) from None
+    print(f"docs: {len(res.pages)} pages from {args.src}")
+    for p in res.pages:
+        print(f"  wrote {p}")
+    return OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--debug", action="store_true", help="print tracebacks on errors")
@@ -177,6 +192,13 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--compare", metavar="BASELINE",
                    help="diff against a result file; exit 1 on checksum mismatch")
     b.set_defaults(func=cmd_bench)
+    d = sub.add_parser("docs", help="documentation tools").add_subparsers(
+        dest="docs_command", metavar="ACTION")
+    d.required = True
+    db = d.add_parser("build", parents=[common], help="build the static docs site")
+    db.add_argument("--src", default="docs", help="docs source directory (default docs)")
+    db.add_argument("--out", default="site", metavar="DIR", help="output dir (default site)")
+    db.set_defaults(func=cmd_docs_build)
     return p
 
 
