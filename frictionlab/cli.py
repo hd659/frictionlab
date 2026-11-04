@@ -17,8 +17,9 @@ resolved config, so artifacts are byte-identical wherever they are written.
 
 `bench` times the fl-038 scenarios and prints a table; `--compare` exits 1 on any
 checksum mismatch against the baseline (results changed), never on timing.
-`docs build` renders the pages linked from `docs/index.md` into a static site; a
-missing index or linked page is a usage error (2).
+`docs build` renders the pages linked from `docs/index.md` into a static site, plus
+the generated API reference under `api/` (`--no-api` skips it); a missing index or
+linked page is a usage error (2).
 
 Exit codes: 0 success, 2 config or usage error, 1 runtime error. Errors go to
 stderr with their dotted paths; tracebacks only with `--debug`. `main(argv)`
@@ -85,6 +86,7 @@ def _load(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def cmd_list(args: argparse.Namespace) -> int:
+    """`frictionlab list`: print each registered experiment and its summary."""
     names = list_experiments()
     width = max(map(len, names), default=0)
     for n in names:
@@ -93,6 +95,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
+    """`frictionlab validate`: resolve a config and report it without running."""
     cfg = resolve_config(_load(args))
     print(f"ok: {args.config} -> {cfg.experiment} (master_seed={cfg.master_seed}, "
           f"replicates={cfg.replicates}, small={str(cfg.small).lower()})")
@@ -100,11 +103,13 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_show_config(args: argparse.Namespace) -> int:
+    """`frictionlab show-config`: print the resolved config as canonical JSON."""
     print(resolve_config(_load(args)).to_json())
     return OK
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    """`frictionlab run`: run a config and write rows.csv, resolved_config.json and report.html."""
     cfg = resolve_config(_load(args))                  # config errors surface before any work
     out = Path(args.out or cfg.output or Path("frictionlab_runs") / cfg.experiment)
     res = run_from_config(cfg)
@@ -121,6 +126,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_bench(args: argparse.Namespace) -> int:
+    """`frictionlab bench`: time scenarios, optionally write JSON and compare to a baseline."""
     from . import bench                                # lazy: keeps `run`/`list` startup lean
     try:
         names = bench.scenario_names(args.scenario or ())
@@ -142,18 +148,21 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
 
 def cmd_docs_build(args: argparse.Namespace) -> int:
+    """`frictionlab docs build`: build the static docs site and API reference."""
     from .docs_site import DocsError, build_site       # lazy, like bench
     try:
-        res = build_site(args.src, args.out)
+        res = build_site(args.src, args.out, api=args.api)
     except DocsError as e:
         raise ConfigError([(e.path, e.message)]) from None
-    print(f"docs: {len(res.pages)} pages from {args.src}")
+    n_api = sum(1 for n in res.names() if n.startswith("api/"))
+    print(f"docs: {len(res.pages) - n_api} pages from {args.src}, {n_api} API pages")
     for p in res.pages:
         print(f"  wrote {p}")
     return OK
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """The argparse parser for every `frictionlab` subcommand."""
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--debug", action="store_true", help="print tracebacks on errors")
     over = argparse.ArgumentParser(add_help=False)
@@ -198,6 +207,8 @@ def build_parser() -> argparse.ArgumentParser:
     db = d.add_parser("build", parents=[common], help="build the static docs site")
     db.add_argument("--src", default="docs", help="docs source directory (default docs)")
     db.add_argument("--out", default="site", metavar="DIR", help="output dir (default site)")
+    db.add_argument("--api", action=argparse.BooleanOptionalAction, default=True,
+                    help="also generate the API reference under api/ (default on)")
     db.set_defaults(func=cmd_docs_build)
     return p
 
@@ -209,6 +220,7 @@ def _report(err: BaseException, debug: bool, header: str) -> None:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """CLI entry point: parse `argv`, dispatch and return an exit code (0, 1 or 2)."""
     parser = build_parser()
     try:
         args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))

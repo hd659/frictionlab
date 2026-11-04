@@ -40,6 +40,7 @@ MODES = ("satisficing", "optimizing")
 
 @dataclass(frozen=True)
 class Deliberation:
+    """Trace of one search: candidates evaluated, choice, expected surplus and step cost paid."""
     mode: str
     steps: int                                  # candidates actually evaluated
     evaluated: Tuple[Tuple[int, float], ...]    # (price, expected surplus) in order
@@ -58,6 +59,7 @@ class Deliberation:
 
 
 class BoundedRationalAgent(Agent):
+    """Searches candidate prices at `cost_per_step` each, satisficing or optimizing."""
     def __init__(self, agent_id: int, side: Side, rng: RngLike = None, *,
                  mode: str = "satisficing", max_steps: int = 10,
                  cost_per_step: int = 1, aspiration: float = 1.0,

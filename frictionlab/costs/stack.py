@@ -39,6 +39,11 @@ def fold_terms(terms: Iterable[Terms]) -> Terms:
 
 
 class FrictionStack:
+    """An ordered set of `CostModel`s summed per fill and rounded once per trade.
+
+    Implements the ledger's `FeeSource` protocol; integer-bps components use
+    an exact integer fast path folded once per stack.
+    """
     def __init__(self, models: Iterable[CostModel] = ()) -> None:
         self.models: List[CostModel] = []
         self._plans: Dict[Role, Plan] = {}

@@ -45,6 +45,7 @@ def _int(name: str, v, *, nonneg: bool = False) -> int:
 
 
 class FeeSource(Protocol):
+    """Anything that prices a trade's frictions: `trade_fees(trade) -> (buyer_fee, seller_fee)`."""
     def trade_fees(self, trade: Trade) -> Tuple[int, int]: ...
 
 
@@ -58,6 +59,7 @@ class InvariantViolation(AssertionError):
 
 @dataclass(frozen=True)
 class Settlement:
+    """The cash and fee legs of one settled trade, as recorded by the `Ledger`."""
     trade_id: int
     time: float
     buyer_id: int
@@ -73,6 +75,11 @@ class Settlement:
 
 
 class Ledger:
+    """Double-entry settlement of trades into `Account`s, with friction fees paid to the venue.
+
+    Cash, positions and fees are integer ticks; a conservation invariant is checked per
+    settled trade (per leg in strict mode, `FRICTIONLAB_STRICT_LEDGER`).
+    """
     def __init__(self, frictions: Optional[FeeSource] = None, venue_id: int = 0, *,
                  allow_short: bool = True, allow_overdraft: bool = True,
                  check_every: bool = False, strict: Optional[bool] = None) -> None:

@@ -57,6 +57,7 @@ def _as_stack(frictions) -> FrictionStack:
 
 
 class InformedTrader(Agent):
+    """Takes liquidity when the fundamental is outside the quotes by more than friction."""
     def __init__(self, agent_id: int, fundamental: FundamentalProcess, *,
                  frictions=None, order_size: int = 1,
                  max_position: Optional[int] = None, wake_rate: float = 1.0,

@@ -34,6 +34,7 @@ from ..costs.base import Fill, Role
 
 @dataclass
 class RouteVenue:
+    """A named book and ledger the router can send orders to."""
     venue_id: str
     book: OrderBook
     ledger: Ledger
@@ -50,6 +51,7 @@ class RouteVenue:
 
 @dataclass(frozen=True)
 class RouteLeg:
+    """The quoted or executed part of a route on one venue, with slippage and fees in ticks."""
     venue_id: str
     side: Side
     qty: int
@@ -66,6 +68,7 @@ class RouteLeg:
 
 @dataclass(frozen=True)
 class RoutePlan:
+    """A routing decision: the legs to send plus the full-size quote of every venue."""
     agent_id: int
     side: Side
     requested: int
@@ -121,6 +124,11 @@ def quote_leg(venue: RouteVenue, agent_id: int, side: Side, qty: int,
 
 
 class VenueRouter:
+    """Routes a marketable intent across venues by integer all-in cost, ties by venue id.
+
+    All-in cost is tiered taker fee + walked slippage + fixed cost; an order is split
+    only when no single venue has the depth.
+    """
     def __init__(self, venues: Sequence[RouteVenue]) -> None:
         ids = [v.venue_id for v in venues]
         if not ids or len(set(ids)) != len(ids):

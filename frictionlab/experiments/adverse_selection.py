@@ -58,6 +58,7 @@ def _prob(name: str, x, open_: bool = False) -> Fraction:
 
 @dataclass(frozen=True)
 class GMQuote:
+    """Glosten-Milgrom break-even bid and ask, exact and rounded to integer ticks."""
     bid: int                 # floor(E[V | sell])
     ask: int                 # ceil(E[V | buy])
     bid_exact: Fraction
@@ -82,6 +83,7 @@ def gm_zero_profit_spread(mu, v_low: int, v_high: int, noise_buy_prob=0.5) -> GM
 
 @dataclass(frozen=True)
 class Config:
+    """Adverse-selection market: horizon, taker arrivals, fundamental jumps and fees."""
     horizon: float = 200.0
     lam: float = 4.0              # total taker arrivals per time unit
     n_noise: int = 4
@@ -208,6 +210,7 @@ def metrics(cfg: Config, out: Outcome) -> Dict[str, Any]:
 
 def run_grid(cfg: Config = Config(), shares: Sequence[float] = SHARES, jumps: Sequence[int] = JUMPS,
              *, replicates: int = 3, master_seed: int = 30, n_workers: int = 1) -> ExperimentResult:
+    """Sweep informed share x jump size and report spreads, maker PnL split and impact."""
     def headline(rows) -> Dict[str, Any]:
         mean = lambda k, s, j: float(np.mean([r[k] for r in rows if r["share"] == s and r["jump"] == j]))
         informed = [r for r in rows if r["share"] > 0]

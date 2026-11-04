@@ -27,6 +27,7 @@ Number = Union[int, float, Fraction]
 
 
 class Role(Enum):
+    """Liquidity role of a fill: MAKER rested on the book, TAKER crossed the spread."""
     MAKER = "maker"
     TAKER = "taker"
 

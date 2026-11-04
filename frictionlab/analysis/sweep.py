@@ -61,6 +61,7 @@ def expand_grid(grid: Mapping[str, Sequence[Any]]) -> List[Params]:
 
 @dataclass(frozen=True)
 class SweepSpec:
+    """A seeded parameter sweep: factory, metrics, grid or cells, replicates and seed."""
     factory: Callable[[Params, int], Any]
     metrics: Callable[[Any], Mapping[str, Any]]
     grid: Optional[Mapping[str, Sequence[Any]]] = None

@@ -40,6 +40,7 @@ KEY = "friction"
 
 @dataclass(frozen=True)
 class Config:
+    """Coase experiment market: buyer values, seller costs, price range and taker share of friction."""
     values: Tuple[int, ...] = (160, 150, 140, 130, 120, 110)   # buyer redemption values
     costs: Tuple[int, ...] = (60, 70, 80, 90, 100, 110)        # seller unit costs
     price_range: Tuple[int, int] = (1, 400)
@@ -73,6 +74,7 @@ class TakerTickFee(CostModel):
 
 
 def friction_stack(level: int, taker_share: float = 0.5) -> FrictionStack:
+    """Friction stack for total per-trade level `level`: fixed cost plus taker fee."""
     fixed, taker = split_friction(level, taker_share)
     return FrictionStack([FixedCost(fixed), TakerTickFee(taker)])
 
@@ -144,6 +146,7 @@ def max_volume(values: Sequence[int], costs: Sequence[int], level: int) -> int:
 
 
 def coase_metrics(res) -> Dict[str, float]:
+    """Per-run metrics: volume, volume cap, surplus shares and friction collected."""
     a0 = next(iter(res.agents.values()))
     level = 2 * a0.fixed + a0.taker
     w, volume = welfare(res), sum(t.qty for t in res.trades)
@@ -166,6 +169,7 @@ def default_levels(cfg: Config = Config(), n: int = 6) -> List[int]:
 
 def run_coase(cfg: Config = Config(), levels: Optional[Sequence[int]] = None, *,
               replicates: int = 4, master_seed: int = 28, n_workers: int = 1) -> ExperimentResult:
+    """Sweep total friction levels and report volume and surplus per level."""
     levels = list(default_levels(cfg) if levels is None else levels)
     ce = competitive_equilibrium(cfg.values, cfg.costs)
 
@@ -184,6 +188,7 @@ def run_coase(cfg: Config = Config(), levels: Optional[Sequence[int]] = None, *,
 
 @dataclass(frozen=True)
 class CoaseThreshold:
+    """Located collapse level with the analytic bound, baseline volume and probes."""
     threshold: int                  # smallest F with mean volume < target
     analytic_bound: int
     baseline_volume: float
@@ -195,13 +200,13 @@ class CoaseThreshold:
 def find_coase_threshold(cfg: Config = Config(), fraction: float = 0.5, *,
                          grid: Optional[Sequence[int]] = None, replicates: int = 4,
                          master_seed: int = 28, n_workers: int = 1) -> CoaseThreshold:
-    if not 0 < fraction <= 1:
-        raise ValueError(f"fraction must be in (0, 1], got {fraction}")
     """Smallest F with mean volume < fraction x volume(F=0), or zero volume.
 
     At F = bound only the widest pair can trade (volume <= 1), so the result
     is <= bound whenever fraction x baseline > 1 and <= bound + 1 always.
     """
+    if not 0 < fraction <= 1:
+        raise ValueError(f"fraction must be in (0, 1], got {fraction}")
     probes: Dict[int, float] = {}
 
     def volume(levels: Sequence[int]) -> None:

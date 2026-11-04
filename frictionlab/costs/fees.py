@@ -79,6 +79,7 @@ class LinearCost(CostModel):
 
 
 class MakerTakerFee(LinearCost):
+    """Maker/taker fee in basis points of notional; a negative maker rate is a rebate."""
     name = "maker_taker"
 
     def __init__(self, maker_bps: Number = 0, taker_bps: Number = 0,
@@ -109,6 +110,7 @@ class MakerTakerFee(LinearCost):
 
 
 class HalfSpreadCost(LinearCost):
+    """Implicit cost of crossing half a quoted spread, per lot, charged to takers by default."""
     name = "half_spread"
 
     def __init__(self, spread_ticks: Number, roles: Roles = TAKER_ONLY) -> None:
@@ -133,6 +135,7 @@ class HalfSpreadCost(LinearCost):
 
 
 class LatencyCost(LinearCost):
+    """Adverse drift over an execution delay: `drift_ticks_per_sec * delay` ticks per lot."""
     name = "latency"
 
     def __init__(self, delay: Number, drift_ticks_per_sec: Number = 0,
@@ -159,6 +162,7 @@ class LatencyCost(LinearCost):
 
 
 class FixedCost(LinearCost):
+    """Flat per-trade cost in integer ticks, charged to the selected roles."""
     name = "fixed"
 
     def __init__(self, per_trade: int, roles: Roles = BOTH) -> None:

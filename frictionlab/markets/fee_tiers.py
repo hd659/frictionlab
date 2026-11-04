@@ -34,6 +34,7 @@ SINK_POLICIES = ("allow", "reject")
 
 @dataclass(frozen=True)
 class FeeTier:
+    """One tier: maker/taker bps that apply from `min_volume` of trailing volume upwards."""
     min_volume: int
     maker_bps: Number = 0
     taker_bps: Number = 0
@@ -51,6 +52,7 @@ class FeeTier:
 
 
 class FeeTierSchedule:
+    """Maker/taker fee tiers keyed on each agent's trailing volume over `window` trades."""
     def __init__(self, tiers: Sequence[FeeTier], window: int = 100) -> None:
         tiers = tuple(tiers)
         if not tiers or tiers[0].min_volume != 0:

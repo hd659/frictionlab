@@ -112,6 +112,7 @@ def check_mapping(data: Any, schema: Schema, path: str, errs: Errors,
 
 
 def validate_params(params: Any, schema: Schema, path: str = "params") -> Dict[str, Any]:
+    """Check `params` against `schema`; returns the normalized mapping or raises `ConfigError`."""
     errs: Errors = []
     out = check_mapping(params, schema, path, errs)
     if errs:
@@ -131,6 +132,7 @@ TOP: Dict[str, Param] = {
 
 @dataclass(frozen=True)
 class ExperimentConfig:
+    """Typed experiment config: name, params, seed, workers, replicates, small flag, output."""
     experiment: str
     params: Dict[str, Any] = field(default_factory=dict)
     master_seed: Optional[int] = None

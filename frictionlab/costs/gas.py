@@ -44,6 +44,11 @@ def _level(name: str, g: int) -> int:
 
 
 class GasProcess:
+    """Seeded two-state (calm / shock) Markov gas level on a fixed time grid.
+
+    `cost()` wraps it as a `GasCost` friction component that charges the
+    level in force at each fill's time.
+    """
     def __init__(self, calm_gas: int, shock_gas: int, p_shock: float = 0.0,
                  p_calm: float = 0.5, *, dt: float = 1.0, seed: int = 0,
                  start: int = CALM) -> None:

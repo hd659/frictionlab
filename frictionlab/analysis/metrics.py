@@ -34,6 +34,7 @@ from ..core.types import Side, Trade
 
 @dataclass(frozen=True)
 class TradeRecord:
+    """Canonical fill record across book, batch and AMM venues with the aggressor side."""
     trade_id: int
     time: float
     price: int        # integer settlement price (ticks)
@@ -107,6 +108,7 @@ class MidPath:
 
 @dataclass(frozen=True)
 class TradeMetrics:
+    """Per-trade effective, realized spread and price impact in ticks (effective = realized + impact)."""
     record: TradeRecord
     effective: int
     realized: int
@@ -131,6 +133,7 @@ def decompose(records: Iterable[TradeRecord], path: MidPath,
 
 @dataclass(frozen=True)
 class SpreadDecomposition:
+    """Volume-weighted effective / realized / impact at horizon `tau`."""
     tau: float
     effective: float   # volume-weighted means, ticks (nan if no trades)
     realized: float
@@ -142,6 +145,7 @@ class SpreadDecomposition:
 
 def spread_decomposition(records: Sequence[TradeRecord], path: MidPath,
                          tau: float) -> SpreadDecomposition:
+    """Volume-weighted spread decomposition of `records` at horizon `tau`."""
     ms = decompose(records, path, tau)
     vol = sum(m.record.qty for m in ms)
     avg = (lambda f: sum(f(m) * m.record.qty for m in ms) / vol) if vol else (
@@ -179,6 +183,7 @@ def variance_ratio(prices: Sequence[float], k: int = 2) -> float:
 
 @dataclass(frozen=True)
 class EfficiencyStats:
+    """Price efficiency: time-weighted |mid - V|, mid coverage and the variance ratio."""
     mad: float              # time-weighted mean |mid - V| where a mid exists, ticks
     coverage: float         # time with a mid / total time
     variance_ratio: float
@@ -186,6 +191,7 @@ class EfficiencyStats:
 
 def price_efficiency(path: MidPath, value: Callable[[float], int], until: float,
                      *, k: int = 4, dt: float = 1.0) -> EfficiencyStats:
+    """Time-weighted |mid - V| and variance ratio of `path` up to `until`."""
     t0, end = path.times[0], float(until)
     if end <= t0:
         raise ValueError(f"until={end} must exceed the first sample {t0}")

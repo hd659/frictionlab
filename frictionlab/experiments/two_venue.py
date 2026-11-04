@@ -59,6 +59,7 @@ class LotFee(CostModel):
 
 @dataclass(frozen=True)
 class MarketConfig:
+    """Two-venue market: steps, maker epochs, quoting and population parameters."""
     steps: int = 200
     epoch: int = 25
     n_makers: int = 4
@@ -83,6 +84,7 @@ def fees_of(params: Mapping[str, Any]) -> Dict[str, Fees]:
 
 
 class TwoVenueMarket:
+    """Two continuous books sharing one population, with routed takers and venue-choosing makers."""
     def __init__(self, cfg: MarketConfig, fees: Mapping[str, Fees], seed: int) -> None:
         self.cfg, self.fees = cfg, {v: tuple(fees[v]) for v in VENUES}
         self.rng = np.random.default_rng(seed)
@@ -209,4 +211,5 @@ def build(cfg: MarketConfig, params: Dict[str, Any], seed: int) -> TwoVenueMarke
 
 
 def simulate(cfg: MarketConfig, fees: Mapping[str, Fees], seed: int) -> Dict[str, Any]:
+    """Run one `TwoVenueMarket` with `fees` and `seed` and return its metrics."""
     return TwoVenueMarket(cfg, fees, seed).run()

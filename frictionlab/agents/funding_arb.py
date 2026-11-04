@@ -45,6 +45,7 @@ LEGS = 4
 
 @dataclass(frozen=True)
 class BasisQuote:
+    """A candidate perp + spot basis trade with expected funding and its friction breakdown."""
     perp_side: Side
     qty: int
     expected_funding: Fraction
@@ -62,6 +63,7 @@ class BasisQuote:
 
 @dataclass
 class BasisPosition:
+    """An open or closed basis trade with its trading, funding and fee cash flows."""
     direction: int            # perp side at entry: -1 short perp / long spot
     qty: int
     open_time: float
@@ -86,6 +88,7 @@ class BasisPosition:
 
 
 class FundingArbitrageur(Agent):
+    """Delta-neutral perp + spot arbitrageur that enters when expected funding beats friction."""
     def __init__(self, agent_id: int, perp, pool_id: int, *, gas: Optional[GasProcess] = None,
                  frictions=None, horizon: int = 3, max_size: int = 50,
                  wake_rate: float = 1.0, decision_cost: int = 0) -> None:

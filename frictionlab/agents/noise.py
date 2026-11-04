@@ -38,6 +38,7 @@ def _prob(name: str, p: float) -> float:
 
 
 class NoiseTrader(Agent):
+    """Poisson-arriving uninformed trader sending random-side market orders."""
     def __init__(self, agent_id: int, rng: RngLike = None, *,
                  arrival_rate: float = 1.0, participation: float = 1.0,
                  buy_prob: float = 0.5, min_size: int = 1, max_size: int = 1,

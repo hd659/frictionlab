@@ -93,12 +93,12 @@ five into one byte-reproducible HTML.
   - [x] CI: GitHub Actions on push / pull_request over Python 3.10-3.12 with pip caching; pytest, `frictionlab bench --size small --compare benchmarks/baseline_small.json` as a checksum-only gate (no timing thresholds), `python -m frictionlab validate` over every `examples/configs/*.json`; optional numba job (`FRICTIONLAB_NUMBA=1`) rerunning the order book oracle tests (`ci/ci.yml`)
   - [x] Contribution guide: design principles (seeded reproducibility, integer ticks, one concept per 100-250 line module, tests with every module), local test / bench workflow, performance PR rule (checksums unchanged, oracle frozen under `tests/reference_*.py`), adding an experiment through the fl-036 registry, `type(scope): summary` commits (`CONTRIBUTING.md`)
   - [x] Repo hygiene tests: workflow wiring (YAML parsed when PyYAML is present), ROADMAP doc links exist, `docs/index.md` links every `docs/phase*.md`, example configs validate, module line ceiling with an explicit capped allowlist, no personal URL hosts or absolute home paths in tracked text (`tests/test_repo_hygiene.py`)
-  - [ ] Documentation site: seeded by `docs/index.md`, which links every phase write-up in order; static site build and API reference remain
+  - [x] Documentation site: seeded by `docs/index.md`, which links every phase write-up in order; static site build and API reference
     - [x] Static site build: stdlib Markdown subset (slugged headings, nested lists, fenced code, pipe tables, all text escaped), page order from `docs/index.md`, embedded-CSS layout with sidebar nav, prev/next and h2/h3 TOC, `.md` -> `.html` link rewriting, byte-reproducible output, `frictionlab docs build [--src docs] [--out DIR]` (`frictionlab/docs_site/`)
-    - [ ] API reference
+    - [x] API reference: per-package pages under `api/` from `__all__` (or own re-exports), address-free normalized signatures, docstrings, class members, qualified-name anchors and cross-references, `api/index.html` with symbol counts, `--api/--no-api` build flag, `api_coverage` reporting no undocumented public symbol (`frictionlab/docs_site/api_ref.py`)
 
 Phase 6 status: in progress (benchmarks and performance item done; CI, contribution guide
-and repo hygiene tests are in; the static documentation site builds from `docs/index.md`; the API reference remains). The config schema, registry and CLI are in: a JSON config
+and repo hygiene tests are in; the documentation site, including the generated API reference, is done). The config schema, registry and CLI are in: a JSON config
 (`examples/configs/coase_small.json`) resolves deterministically (defaults, then small
 preset, then user params), runs any of the five Phase 5 experiments with rows identical to
 the direct call, and records the resolved config in the fl-026 report header.
@@ -115,7 +115,9 @@ runner scenarios, and by order construction / validation in the book and AMM str
 (`docs/phase6-performance.md`). CI now runs the test suite, the checksum gate and config
 validation on Python 3.10-3.12 for every push, and `CONTRIBUTING.md` writes down the rules
 the earlier phases followed. `frictionlab docs build` now renders the pages linked from `docs/index.md` into a
-byte-reproducible static site with no JavaScript or external assets. Next: the API reference.
+byte-reproducible static site with no JavaScript or external assets, plus an API reference
+for every public symbol; `api_coverage` keeps public docstrings complete, and the fl-038
+checksums confirm the docstring pass changed no behavior.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.

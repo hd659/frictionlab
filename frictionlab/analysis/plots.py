@@ -91,6 +91,7 @@ def _polyline(xs, ys, sx, sy, color: str, name: str) -> str:
 
 def multi_line_chart(series: Mapping[str, Sequence[float]], xs: Sequence[float] | None = None,
                      title: str = "", xlabel: str = "", ylabel: str = "") -> str:
+    """Deterministic SVG line chart with one line per named series."""
     names = list(series)
     ys_list = [[float(v) for v in series[n]] for n in names]
     xs_list = [[float(v) for v in xs] if xs is not None else [float(i) for i in range(len(y))]
@@ -115,10 +116,12 @@ def multi_line_chart(series: Mapping[str, Sequence[float]], xs: Sequence[float] 
 
 def line_chart(ys: Sequence[float], xs: Sequence[float] | None = None, title: str = "",
                xlabel: str = "", ylabel: str = "", name: str = "y") -> str:
+    """Deterministic SVG line chart of one series."""
     return multi_line_chart({name: ys}, xs, title, xlabel, ylabel)
 
 
 def bar_chart(values: Mapping[str, float], title: str = "", ylabel: str = "") -> str:
+    """Deterministic SVG bar chart of labelled values (zero baseline)."""
     labels = list(values)
     vals = [float(values[k]) for k in labels]
     finite = [v for v in vals if math.isfinite(v)]
@@ -151,6 +154,7 @@ def bar_chart(values: Mapping[str, float], title: str = "", ylabel: str = "") ->
 def heatmap(grid: Sequence[Sequence[float]], row_labels: Sequence[str] | None = None,
             col_labels: Sequence[str] | None = None, title: str = "",
             xlabel: str = "", ylabel: str = "") -> str:
+    """Deterministic SVG heatmap of a rectangular grid with row and column labels."""
     rows = [[float(v) for v in r] for r in grid]
     nr, nc = len(rows), max((len(r) for r in rows), default=0)
     if any(len(r) != nc for r in rows):

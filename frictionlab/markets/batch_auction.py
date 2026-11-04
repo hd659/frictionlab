@@ -45,6 +45,7 @@ _INF = float("inf")
 
 @dataclass(frozen=True)
 class Clearing:
+    """Result of one batch: uniform clearing price (None if nothing crossed), volume, order count and trades."""
     time: float
     price: Optional[int]   # None if nothing crossed
     volume: int            # lots executed (after self-trade netting)

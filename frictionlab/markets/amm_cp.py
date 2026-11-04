@@ -37,6 +37,7 @@ class SwapRejected(LedgerError):
 
 @dataclass(frozen=True)
 class SwapResult:
+    """One executed AMM swap: amounts, LP fee kept by the pool, friction fee and the ledger settlement."""
     trade_id: int
     side: Side          # trader's side in base: BUY = quote in, base out
     amount_in: int
@@ -54,6 +55,7 @@ class SwapResult:
 
 
 class ConstantProductAMM:
+    """x * y = k pool with an integer-bps LP fee, settled through the ledger as an explicit account."""
     def __init__(self, ledger: Ledger, pool_id: int, reserve_base: int, reserve_quote: int,
                  fee_bps: int = 30, frictions: Optional[FrictionStack] = None,
                  ids: Optional[IdGen] = None, min_reserve: int = 1) -> None:

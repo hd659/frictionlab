@@ -30,6 +30,7 @@ class ExperimentError(RuntimeError):
 
 @dataclass(frozen=True)
 class ExperimentResult:
+    """Outcome of one experiment: name, seed, swept grid, tidy rows and headline findings."""
     name: str
     master_seed: int
     params: Dict[str, List[Any]]          # swept grid, key -> levels (stable order)

@@ -25,6 +25,7 @@ RngLike = Union[np.random.Generator, int, None]
 
 
 class FundamentalProcess:
+    """Seeded jump process for the fundamental value in integer ticks, floored at `floor`."""
     def __init__(self, initial: int = 100, *, jump_rate: float = 0.0,
                  jump_size: int = 1, floor: int = 1, start_time: float = 0.0,
                  rng: RngLike = None) -> None:

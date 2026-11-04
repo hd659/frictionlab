@@ -35,6 +35,7 @@ Num = Union[int, Fraction]
 
 @dataclass(frozen=True)
 class FundingEvent:
+    """One funding settlement: mark, premium, clamped rate, per-account payments and sink remainder."""
     time: float
     index: int
     mark: Fraction
@@ -61,6 +62,11 @@ def _floor(x: Fraction) -> int:
 
 
 class PerpMarket:
+    """Perpetual futures venue that marks off its book mid and settles periodic funding.
+
+    The rate is `k * premium` clamped to `cap_bps`, paid in integer ticks through the
+    ledger every `interval`; rounding residue goes to the funding sink.
+    """
     def __init__(self, ledger: Ledger, index, book: Optional[OrderBook] = None, *,
                  k: Num = 1, cap_bps: Num = 75, interval: float = 8.0,
                  sink_id: int = PERP_SINK_ID) -> None:

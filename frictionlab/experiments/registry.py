@@ -27,6 +27,7 @@ ConfigLike = Union[str, Path, Mapping[str, Any], ExperimentConfig]
 
 
 class UnknownExperimentError(ConfigError, LookupError):
+    """Config error for an unregistered experiment name, with a close-match hint."""
     def __init__(self, name: str, suggestion: Optional[str]) -> None:
         hint = f"; did you mean {suggestion!r}?" if suggestion else ""
         super().__init__([("experiment", f"unknown experiment {name!r}{hint} "
@@ -36,6 +37,7 @@ class UnknownExperimentError(ConfigError, LookupError):
 
 @dataclass(frozen=True)
 class Experiment:
+    """A registered experiment: runner, param schema, defaults, small preset and seeds."""
     name: str
     runner: Runner = field(repr=False)
     param_schema: Dict[str, Param] = field(repr=False)
@@ -81,14 +83,17 @@ def experiment(name: str, param_schema: Mapping[str, Param], defaults: Mapping[s
 
 
 def unregister_experiment(name: str) -> None:
+    """Remove `name` from the registry (no-op if absent); used by tests and plugins."""
     _REGISTRY.pop(name, None)
 
 
 def list_experiments() -> List[str]:
+    """Registered experiment names, sorted."""
     return sorted(_REGISTRY)
 
 
 def get_experiment(name: str) -> Experiment:
+    """Look up a registered experiment; raises `UnknownExperimentError` with a hint."""
     try:
         return _REGISTRY[name]
     except KeyError:

@@ -117,6 +117,7 @@ def amm_leg(pool, book_side: Side, base: int) -> Tuple[Swap, int]:
 
 @dataclass(frozen=True)
 class ArbQuote:
+    """A priced book-vs-AMM arbitrage: sizes, both legs' amounts and the friction breakdown."""
     pool_id: int
     book_side: Side
     qty: int
@@ -183,6 +184,7 @@ def _walk(levels, q: int) -> Optional[List[Tuple[int, int]]]:
 
 
 class CrossVenueArbitrageur(Agent):
+    """Trades the book against AMM pools when the gap beats all-in friction, sized up to `max_size`."""
     def __init__(self, agent_id: int, *, frictions=None, pools: Sequence = (),
                  pool_ids: Optional[Sequence[int]] = None, max_size: int = 100,
                  wake_rate: float = 1.0, decision_cost: int = 0) -> None:

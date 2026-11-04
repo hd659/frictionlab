@@ -35,6 +35,7 @@ VENUE_SINK, COST_SINK, POOL = "venue_sink", "cost_sink", "pool"
 
 @dataclass(frozen=True)
 class Equilibrium:
+    """Competitive equilibrium of a valuation/cost schedule: quantity, max surplus, price band."""
     quantity: int
     max_surplus: int
     price_lo: int
@@ -53,6 +54,7 @@ def competitive_equilibrium(values: Sequence[int], costs: Sequence[int]) -> Equi
 
 
 def is_valuation_agent(agent) -> bool:
+    """True if `agent` has a valuation schedule and side (counts toward welfare)."""
     return hasattr(agent, "schedule") and hasattr(agent, "side")
 
 
@@ -73,6 +75,7 @@ def _lots(records: Iterable[TradeRecord], agent) -> List[int]:
 
 @dataclass(frozen=True)
 class WelfareReport:
+    """Realized gains from trade vs the competitive maximum, with per-agent PnL."""
     equilibrium: Equilibrium
     gross_gains: int                      # value of the realized allocation
     per_agent: Dict[int, PnLBreakdown] = field(repr=False)

@@ -31,6 +31,7 @@ class ChecksumDrift(RuntimeError):
 
 def run_scenario(name: str, size: str = "small", *, warmup: int = 1,
                  repeat: int = 3) -> Dict[str, Any]:
+    """Time one scenario (warmup + repeats) and return timings, ops and its work checksum."""
     if repeat < 1 or warmup < 0:
         raise ValueError(f"need repeat >= 1 and warmup >= 0, got {repeat}, {warmup}")
     sc = get_scenario(name)
@@ -55,6 +56,7 @@ def run_scenario(name: str, size: str = "small", *, warmup: int = 1,
 
 def run_bench(names: Sequence[str] = (), size: str = "small", *, warmup: int = 1,
               repeat: int = 3) -> Dict[str, Any]:
+    """Run the named scenarios (default all) at `size` into a schema-tagged result dict."""
     return {"schema": SCHEMA, "size": size,
             "scenarios": {n: run_scenario(n, size, warmup=warmup, repeat=repeat)
                           for n in scenario_names(names)}}
@@ -69,10 +71,12 @@ def checksums_only(results: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def to_json(results: Mapping[str, Any]) -> str:
+    """Result dict as sorted-key, indented JSON with a trailing newline."""
     return json.dumps(results, sort_keys=True, indent=2) + "\n"
 
 
 def write_json(results: Mapping[str, Any], path: PathLike) -> Path:
+    """Write `to_json(results)` to `path`, creating parent dirs; returns the path."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(to_json(results), encoding="utf-8")
@@ -80,6 +84,7 @@ def write_json(results: Mapping[str, Any], path: PathLike) -> Path:
 
 
 def load_json(path: PathLike) -> Dict[str, Any]:
+    """Read a bench result file; raises ValueError if it has no `scenarios`."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("scenarios"), dict):
         raise ValueError(f"{path}: not a frictionlab bench result (missing 'scenarios')")
@@ -87,6 +92,7 @@ def load_json(path: PathLike) -> Dict[str, Any]:
 
 
 def format_table(results: Mapping[str, Any]) -> str:
+    """Plain-text table of a bench result, one row per scenario."""
     rows = [("scenario", "ops", "min_s", "median_s", "max_s", "ops/s", "checksum")]
     for n, r in sorted(results["scenarios"].items()):
         rows.append((n, str(r["ops"]), f"{r['min_s']:.4f}", f"{r['median_s']:.4f}",
@@ -101,6 +107,7 @@ def format_table(results: Mapping[str, Any]) -> str:
 
 @dataclass
 class Comparison:
+    """Diff of a result against a baseline: checksum errors and per-scenario speedups."""
     errors: List[str] = field(default_factory=list)
     speedups: Dict[str, Optional[float]] = field(default_factory=dict)  # baseline / current
 

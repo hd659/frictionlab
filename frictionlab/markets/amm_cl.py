@@ -43,17 +43,20 @@ def _cdiv(a: int, b: int) -> int:
 
 
 def base_delta(L: int, sa: int, sb: int, up: bool = False) -> int:
+    """Base amount for liquidity `L` between Q96 sqrt prices `sa` < `sb`; ceil if `up`."""
     num, den = L * Q96 * (sb - sa), sa * sb
     return _cdiv(num, den) if up else num // den
 
 
 def quote_delta(L: int, sa: int, sb: int, up: bool = False) -> int:
+    """Quote amount for liquidity `L` between Q96 sqrt prices `sa` < `sb`; ceil if `up`."""
     num = L * (sb - sa)
     return _cdiv(num, Q96) if up else num // Q96
 
 
 @dataclass(frozen=True)
 class Position:
+    """Liquidity provided on the tick range `[tick_lower, tick_upper)`."""
     tick_lower: int
     tick_upper: int
     liquidity: int
@@ -61,6 +64,7 @@ class Position:
 
 @dataclass(frozen=True)
 class SwapPlan:
+    """A quoted concentrated-liquidity swap: amounts in and out, LP fee and the post-swap pool state."""
     side: Side
     amount_in: int        # gross input actually consumed (incl. LP fee)
     amount_out: int
@@ -74,6 +78,11 @@ class SwapPlan:
 
 
 class ConcentratedLiquidityAMM:
+    """v3-style pool with liquidity on integer-tick ranges, settled through the ledger.
+
+    Swaps cross initialized ticks and share the quote/swap interface of
+    `ConstantProductAMM`; the pool is an explicit ledger account.
+    """
     def __init__(self, ledger: Ledger, pool_id: int, price, fee_bps: int = 30,
                  frictions: Optional[FrictionStack] = None, ids: Optional[IdGen] = None,
                  partial_fill: bool = True) -> None:

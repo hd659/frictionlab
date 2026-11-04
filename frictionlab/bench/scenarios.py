@@ -44,6 +44,7 @@ class Work:
 
 @dataclass(frozen=True)
 class Scenario:
+    """A named, seeded benchmark workload with per-size parameters."""
     name: str
     doc: str
     fn: Callable[[Dict[str, Any], int], Work]
@@ -197,10 +198,12 @@ SCENARIOS: Dict[str, Scenario] = {s.name: s for s in (
 
 
 def get_scenario(name: str) -> Scenario:
+    """Look up a scenario by name; KeyError lists the known names."""
     if name not in SCENARIOS:
         raise KeyError(f"unknown scenario {name!r}; known: {', '.join(sorted(SCENARIOS))}")
     return SCENARIOS[name]
 
 
 def scenario_names(names: Sequence[str] = ()) -> List[str]:
+    """Validated scenario names, or every scenario in registry order when empty."""
     return [get_scenario(n).name for n in names] if names else list(SCENARIOS)

@@ -28,6 +28,7 @@ from ..core.types import Trade
 
 @dataclass(frozen=True)
 class StructureStats:
+    """Per-structure tape summary: volume, effective spread, snipe share and VWAP."""
     name: str
     volume: int                 # lots executed
     n_trades: int
@@ -61,6 +62,7 @@ def is_snipe(trade: Trade, value: Callable[[float], int],
 def structure_stats(trades: Iterable[Trade], value: Callable[[float], int], *,
                     jump_times: Iterable[float] = (), window: float = 1.0,
                     name: str = "") -> StructureStats:
+    """Volume-weighted effective spread, snipe volume / share and VWAP of a trade tape."""
     if window < 0:
         raise ValueError(f"window must be >= 0, got {window}")
     jt = sorted(float(t) for t in jump_times)

@@ -40,6 +40,7 @@ def fee_grid(makers: Sequence[int], takers: Sequence[int]) -> List[Fees]:
 
 @dataclass(frozen=True)
 class Config:
+    """Fee-wars setup: two-venue market, maker/taker fee grids, start state and stopping rule."""
     market: MarketConfig = field(default_factory=MarketConfig)
     makers: Tuple[int, ...] = (-2, -1, 0, 1)
     takers: Tuple[int, ...] = (0, 1, 2, 3, 4)
@@ -54,6 +55,7 @@ class Config:
 
 
 class Detection(NamedTuple):
+    """Outcome of best-response dynamics: fixed point, cycle (with length) or none."""
     kind: str                  # "fixed_point" | "cycle" | "none"
     round: int                 # round at which it fired (last round if none)
     cycle_length: int          # 1 for a fixed point, 0 for none
@@ -84,6 +86,7 @@ def factory(cfg: MarketConfig, params: Dict[str, Any], seed: int) -> TwoVenueMar
 
 
 def probe_seeds(master_seed: int, replicates: int) -> List[int]:
+    """`replicates` deterministic 64-bit seeds spawned from `master_seed`."""
     kids = np.random.SeedSequence(master_seed).spawn(replicates)
     return [int(k.generate_state(1, np.uint64)[0]) for k in kids]
 

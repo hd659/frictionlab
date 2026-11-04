@@ -9,6 +9,8 @@
   effective = realized spread + price impact at horizon tau (exact integer
   identity), impact by trade size, and price efficiency (|mid - V| and the
   variance ratio).
+- `structure_compare`: batch auction vs continuous book on one tape, effective
+  spread and latency-snipe share (`compare_structures`, `structure_delta`).
 - `welfare`: realized gains from trade vs the competitive-equilibrium
   maximum, net of friction sinks, and zero-sum PnL across every account.
 - `sweep`: seeded (SeedSequence-spawned) parameter sweeps over friction
@@ -42,6 +44,11 @@ from .spread import (
     spread_stats, volume_between,
 )
 from .scales import LinearScale, extent, format_tick, nice_ticks, ramp
+from .structure_compare import (
+    StructureStats, compare as compare_structures, delta as structure_delta,
+    effective_spread, is_snipe, jump_times_of, structure_stats,
+    summary as structure_summary,
+)
 from .sweep import (
     FRICTION_KEYS, SweepSpec, aggregate, expand_grid, friction_stack, run_sweep, write_csv,
 )
@@ -57,6 +64,8 @@ __all__ = [
     "EfficiencyStats", "MidPath", "SpreadDecomposition", "TradeMetrics", "TradeRecord",
     "decompose", "impact_by_size", "price_efficiency", "spread_decomposition",
     "trade_records", "variance_ratio",
+    "StructureStats", "compare_structures", "effective_spread", "is_snipe", "jump_times_of",
+    "structure_delta", "structure_stats", "structure_summary",
     "COST_SINK", "POOL", "VENUE_SINK", "Equilibrium", "WelfareReport", "account_breakdown",
     "competitive_equilibrium", "is_valuation_agent", "pnl_by_account", "pnl_by_agent_type",
     "welfare",

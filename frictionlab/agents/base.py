@@ -27,6 +27,7 @@ Levels = Tuple[Tuple[int, int], ...]
 
 @dataclass(frozen=True)
 class MarketView:
+    """Read-only snapshot an agent decides on: touch, depth, last trade and its own account."""
     time: float
     agent_id: int
     best_bid: Optional[int]
@@ -52,6 +53,7 @@ class MarketView:
 
 @dataclass(frozen=True)
 class Submit:
+    """Intent to place an order: side, lots and a limit price (None for a market order)."""
     side: Side
     qty: int
     price: Optional[int] = None  # None -> market order
@@ -69,6 +71,7 @@ class Submit:
 
 @dataclass(frozen=True)
 class Cancel:
+    """Intent to cancel a resting order, fully or by `qty` lots."""
     order_id: int
     qty: Optional[int] = None  # None -> cancel the full remainder
 
@@ -142,6 +145,7 @@ class Venue:
 
 
 class Agent(ABC):
+    """Base agent: observe a `MarketView`, return intents from `decide`, pay `decision_cost` per decision."""
     def __init__(self, agent_id: int, decision_cost: int = 0) -> None:
         self.agent_id = _check_int("agent_id", agent_id)
         self.decision_cost = _check_int("decision_cost", decision_cost, nonneg=True)

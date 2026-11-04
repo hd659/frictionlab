@@ -34,6 +34,11 @@ _BUY, _SELL, _LIMIT = Side.BUY, Side.SELL, OrderType.LIMIT
 
 
 class OrderBook:
+    """Continuous limit order book with price-time priority over integer-tick levels.
+
+    Supports limit and market orders, partial fills, O(1) cancel by order id and a
+    self-trade prevention mode (`stp`). Every fill is appended to `trades`.
+    """
     def __init__(self, trade_ids: Optional[IdGen] = None,
                  stp: str = "cancel_resting") -> None:
         if stp not in STP_MODES:

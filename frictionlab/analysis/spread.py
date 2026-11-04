@@ -33,6 +33,7 @@ Sample = Tuple[float, Optional[int], Optional[int]]  # (time, bid, ask)
 
 @dataclass(frozen=True)
 class SpreadStats:
+    """Quoted-spread summary: time-weighted and mean spread, two-sided coverage, max."""
     tw_spread: float     # time-weighted quoted spread over two-sided time (nan if none)
     coverage: float      # two-sided time / total time
     mean_spread: float   # unweighted mean over two-sided samples

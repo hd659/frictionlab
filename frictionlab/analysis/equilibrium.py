@@ -90,6 +90,7 @@ def largest_remainder(shares, total: int) -> np.ndarray:
 
 @dataclass(frozen=True)
 class StabilityDetector:
+    """Fires when shares move less than `epsilon` over `window` generations, or one falls below `floor`."""
     epsilon: float = 1e-6
     window: int = 10
     floor: float = 0.0                            # extinction threshold, 0 disables
@@ -121,6 +122,7 @@ class StabilityDetector:
 
 @dataclass(frozen=True)
 class EquilibriumResult:
+    """Replicator run: share and fitness trajectories plus the detector's reason and generation."""
     labels: Tuple[str, ...]
     shares: np.ndarray                            # (G + 1, n) share trajectory
     fitness: np.ndarray                           # (G, n) fitness history

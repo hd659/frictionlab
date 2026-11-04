@@ -33,10 +33,12 @@ def to_ticks(price: float, tick_size: float) -> int:
 
 
 def from_ticks(ticks: int, tick_size: float) -> float:
+    """Integer ticks -> price in currency units (`ticks * tick_size`); rejects non-int ticks."""
     return _check_int("ticks", ticks) * float(tick_size)
 
 
 class Side(IntEnum):
+    """Trade direction as a signed int: BUY = 1, SELL = -1 (`opposite` flips it)."""
     BUY = 1
     SELL = -1
 
@@ -46,6 +48,7 @@ class Side(IntEnum):
 
 
 class OrderType(Enum):
+    """Order kind: LIMIT rests at its price, MARKET takes liquidity and never rests."""
     LIMIT = "limit"
     MARKET = "market"
 
@@ -62,6 +65,7 @@ class IdGen:
 
 @dataclass(eq=False)
 class Order:
+    """A limit or market order in integer ticks and lots; `filled` / `cancelled` track its life."""
     order_id: int
     agent_id: int
     side: Side
@@ -120,6 +124,7 @@ class Order:
 
 @dataclass(frozen=True)
 class Trade:
+    """An immutable fill between a buy and a sell order at one integer-tick price."""
     trade_id: int
     time: float
     price: int
@@ -143,6 +148,7 @@ class Trade:
 
 @dataclass
 class Account:
+    """Per-agent balances in integer ticks: cash, position, fees paid, volume and trade count."""
     agent_id: int
     cash: int = 0
     position: int = 0

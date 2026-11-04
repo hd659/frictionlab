@@ -1,4 +1,8 @@
-"""fl-043: the static docs site built from docs/index.md, and `frictionlab docs build`."""
+"""fl-043: the static docs site built from docs/index.md, and `frictionlab docs build`.
+
+The Markdown pages are tested with `api=False`; the fl-044 API pages are covered by
+tests/test_docs_api_ref.py.
+"""
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -12,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 NEW_MODULES = ["frictionlab/docs_site/__init__.py", "frictionlab/docs_site/blocks.py",
                "frictionlab/docs_site/markdown.py", "frictionlab/docs_site/build.py",
-               "frictionlab/docs_site/layout.py"]
+               "frictionlab/docs_site/layout.py",
+               "frictionlab/docs_site/api_ref.py"]
 MAX_LINES = 250                                     # tests/test_repo_hygiene.py default
 
 
@@ -28,7 +33,7 @@ def index_links():
 
 @pytest.fixture(scope="module")
 def site(tmp_path_factory):
-    return build_site(DOCS, tmp_path_factory.mktemp("site"))
+    return build_site(DOCS, tmp_path_factory.mktemp("site"), api=False)
 
 
 def test_one_page_per_index_entry_in_nav_order(site):
@@ -82,7 +87,7 @@ def test_internal_links_resolve_and_external_md_links_are_kept(site):
 
 
 def test_two_builds_are_byte_identical(tmp_path):
-    a, b = build_site(DOCS, tmp_path / "a"), build_site(DOCS, tmp_path / "b")
+    a, b = build_site(DOCS, tmp_path / "a", api=False), build_site(DOCS, tmp_path / "b", api=False)
     assert a.names() == b.names()
     for pa, pb in zip(a.pages, b.pages):
         assert pa.read_bytes() == pb.read_bytes()
@@ -90,7 +95,7 @@ def test_two_builds_are_byte_identical(tmp_path):
 
 
 def test_render_site_is_pure_and_matches_files(site):
-    pages = render_site(DOCS)
+    pages = render_site(DOCS, api=False)
     assert list(pages) == site.names()
     assert all((site.out / n).read_text("utf-8") == html for n, html in pages.items())
 
@@ -108,7 +113,7 @@ def test_page_order_follows_first_link_and_folds_duplicates(tmp_path):
     src = _tree(tmp_path, "# I\n\n[b](b.md) [a](a.md#x) [b again](b.md) [r](../README.md)\n",
                 a="# A\n", b="# B\n[back](index.md)\n")
     assert page_order(src) == ["index.md", "b.md", "a.md"]
-    out = build_site(src, tmp_path / "out")
+    out = build_site(src, tmp_path / "out", api=False)
     assert out.names() == ["index.html", "b.html", "a.html"]
     assert 'href="index.html">back' in (tmp_path / "out" / "b.html").read_text("utf-8")
 
@@ -133,6 +138,7 @@ def test_cli_build_writes_site(tmp_path, capsys):
     out = capsys.readouterr().out
     assert code == 0 and (tmp_path / "s" / "index.html").is_file()
     assert out.startswith(f"docs: {len(index_links()) + 1} pages")
+    assert (tmp_path / "s" / "api" / "index.html").is_file()
     assert cli.main(["docs"]) == 2
 
 

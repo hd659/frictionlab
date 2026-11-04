@@ -52,6 +52,7 @@ def inline_svg(svg: str) -> str:
 
 
 class Section:
+    """Base report section: a title and an HTML `body`, rendered with an anchor."""
     kind = "section"
 
     def __init__(self, title: str) -> None:
@@ -67,6 +68,7 @@ class Section:
 
 
 class MetricsSection(Section):
+    """Market-quality table from spread, efficiency and welfare stats plus extras."""
     kind = "metrics"
 
     def __init__(self, spread=None, efficiency=None, welfare=None,
@@ -100,6 +102,7 @@ class MetricsSection(Section):
 
 
 class SweepSection(Section):
+    """Sweep table and chart from fl-023 rows, grouped by the `by` keys."""
     kind = "sweep"
 
     def __init__(self, rows: Sequence[Mapping[str, Any]], by: Sequence[str],
@@ -154,6 +157,7 @@ class SweepSection(Section):
 
 
 class EquilibriumSection(Section):
+    """Share trajectory chart and outcome of a replicator run."""
     kind = "equilibrium"
 
     def __init__(self, result, title: str = "Strategy-mix equilibrium") -> None:
@@ -191,6 +195,7 @@ class EquilibriumSection(Section):
 
 
 class PnLSection(Section):
+    """PnL by agent type, as a breakdown table or a bar chart of plain values."""
     kind = "pnl"
 
     def __init__(self, values: Mapping[str, Any], title: str = "PnL by agent type") -> None:

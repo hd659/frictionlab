@@ -33,6 +33,7 @@ RngLike = Union[np.random.Generator, int, None]
 
 @dataclass(frozen=True)
 class ASQuote:
+    """One Avellaneda-Stoikov quote: reservation price, spread and the posted bid and ask."""
     mid: float
     inventory: int
     reservation: float
@@ -51,6 +52,7 @@ def _positive(name: str, v: float) -> float:
 
 
 class AvellanedaStoikovMM(Agent):
+    """Inventory-aware Avellaneda-Stoikov market maker quoting around a reservation price."""
     def __init__(self, agent_id: int, *, gamma: float = 0.1, sigma: float = 2.0,
                  k: float = 1.5, horizon: float = 100.0, start_time: float = 0.0,
                  order_size: int = 1, inventory_limit: int = 10,

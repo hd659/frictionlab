@@ -43,6 +43,7 @@ MODES = ("satisficing", "optimizing")
 
 @dataclass(frozen=True)
 class Config:
+    """Decision-cost market: bounded-rational slots against ZI-C traders, search limits and aspiration."""
     n_br: int = 4                                  # bounded-rational slots (alternating sides)
     n_zi: int = 6                                  # ZI-C buyers and sellers each
     zi_values: Tuple[int, int] = (80_000, 120_000)
@@ -112,6 +113,7 @@ def run_decision_cost(cfg: Config = Config(), costs: Sequence[int] = (0, 1, 2, 4
 
 @dataclass(frozen=True)
 class BreakEven:
+    """Smallest step cost at which the satisficer out-earns the optimizer, with the probes."""
     aspiration: float
     max_steps: int
     cost: Optional[int]          # smallest integer c with mean sat net > opt net, None if none

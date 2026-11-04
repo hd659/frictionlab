@@ -18,6 +18,7 @@ Handler = Callable[["SimClock", "Event"], None]
 
 @dataclass(order=True)
 class Event:
+    """A scheduled event; fires by (time, priority, seq), `cancelled` marks lazy deletion."""
     time: float
     priority: int
     seq: int

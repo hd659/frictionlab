@@ -121,6 +121,7 @@ class CrossVenue(Venue):
 
 @dataclass
 class RunResult:
+    """Outcome of `MarketRunner.run`: trades, ledger, book, venue, agents and event counts."""
     trades: List[Trade]
     ledger: Ledger
     book: OrderBook
@@ -164,6 +165,8 @@ class RunResult:
 
 
 class MarketRunner:
+    """Seeded event loop: Poisson agent wake-ups on a `SimClock`, settled through the ledger."""
+
     def __init__(self, agents: Sequence[Agent], frictions=None, *, seed: int = 0,
                  wake_rate: float = 1.0, cash: int = 0, position: int = 0,
                  endowments: Optional[Mapping[int, Tuple[int, int]]] = None,

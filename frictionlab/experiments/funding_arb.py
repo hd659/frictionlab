@@ -37,6 +37,7 @@ CASH, POS = 10**9, 10**5
 
 @dataclass(frozen=True)
 class Config:
+    """Funding-arb market: index, gas process, retail flow skew and arbitrageur limits."""
     index: int = 1_000
     calm_gas: int = 1
     p_calm: float = 0.05             # SHOCK -> CALM per gas step (persistent shocks)
@@ -53,6 +54,7 @@ class Config:
 
 
 class InventoryMaker(Agent):
+    """Perp maker that skews its quotes against inventory, opening the basis under one-sided flow."""
     def __init__(self, cfg: Config) -> None:
         super().__init__(MAKER_ID)
         self.cfg, self.wake_rate = cfg, 8.0
@@ -88,6 +90,7 @@ def entry_threshold_gas(expected_funding, horizon, fees, impact, decision_cost) 
 
 
 def analytic_bound(cfg: Config) -> int:
+    """Per-leg gas level above which entry cannot pay, from the config's worst case."""
     hi, lo = cfg.index + cfg.band + cfg.half + cfg.ladder, cfg.index - cfg.band - cfg.half - cfg.ladder
     e, fee = Fraction(hi * cfg.cap_bps, BPS_DENOM), Fraction(2 * lo * cfg.taker_bps, BPS_DENOM)
     return entry_threshold_gas(cfg.max_size * e, cfg.horizon, cfg.max_size * fee, 0, cfg.decision_cost)
@@ -119,6 +122,7 @@ def build(cfg: Config, params: Dict[str, Any], seed: int) -> MarketRunner:
 
 
 def arb_metrics(cfg: Config, res) -> Dict[str, Any]:
+    """Per-run arbitrage metrics: entries, funding, friction breakdown, net PnL and residuals."""
     arbs = [a for a in res.agents.values() if isinstance(a, FundingArbitrageur)]
     perp, gas = arbs[0].perp, arbs[0].gas
     perp.sync()
@@ -163,6 +167,7 @@ def arb_metrics(cfg: Config, res) -> Dict[str, Any]:
 
 
 def default_levels(cfg: Config = Config()) -> List[int]:
+    """Default shock gas grid: calm, two small steps, the midpoint and just past the bound."""
     b, c = max(analytic_bound(cfg), cfg.calm_gas), cfg.calm_gas
     return sorted({c, c + 4, c + 10, (c + b) // 2, b + 1})
 
@@ -170,6 +175,7 @@ def default_levels(cfg: Config = Config()) -> List[int]:
 def run_funding_arb(cfg: Config = Config(), levels: Optional[Sequence[int]] = None,
                     probs: Sequence[float] = (0.0, 0.3, 0.6), *, replicates: int = 1,
                     master_seed: int = 34, n_workers: int = 1) -> ExperimentResult:
+    """Sweep shock gas level x shock probability and report arbitrage activity per cell."""
     levels = [int(v) for v in (default_levels(cfg) if levels is None else levels)]
     probs = [float(p) for p in probs]
 
@@ -189,6 +195,7 @@ def run_funding_arb(cfg: Config = Config(), levels: Optional[Sequence[int]] = No
 
 @dataclass(frozen=True)
 class GasThreshold:
+    """Entry-collapse shock gas level with the analytic bound and probes."""
     threshold: Optional[int]         # smallest shock level with mean entries < target
     analytic_bound: int
     shock_probability: float

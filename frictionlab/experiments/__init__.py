@@ -31,6 +31,9 @@
   `find_gas_threshold` bisects for the entry-collapse shock level.
 - `registry` (Phase 6): name -> runner, param schema and defaults for all five
   experiments; `run_from_config` turns a JSON/YAML config into a result.
+
+Several modules share short names (`Config`, `run_grid`, `default_levels`), so
+the package re-exports them under prefixed aliases such as `CoaseConfig`.
 """
 from .adverse_selection import (
     Config as AdverseSelectionConfig, GMMaker, GMQuote, gm_zero_profit_spread, maker_split,
@@ -48,32 +51,44 @@ from .fee_wars import (
     run_fee_wars, study_report as fee_wars_report,
 )
 from .funding_arb import (
-    Config as FundingArbConfig, GasThreshold, InventoryMaker, RetailFlow, analytic_bound as funding_arb_bound,
-    arb_metrics as funding_arb_metrics, entry_threshold_gas, find_gas_threshold, run_funding_arb,
+    Config as FundingArbConfig, GasThreshold, InventoryMaker, RetailFlow,
+    analytic_bound as funding_arb_bound, arb_metrics as funding_arb_metrics,
+    default_levels as funding_arb_levels, entry_threshold_gas, find_gas_threshold,
+    run_funding_arb,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
-    register_experiment, resolve_config, run_from_config,
+    register_experiment, resolve_config, run_from_config, unregister_experiment,
 )
-from .two_venue import LotFee, MarketConfig as TwoVenueConfig, TwoVenueMarket, simulate as simulate_two_venue
+from .two_venue import (
+    LotFee, MarketConfig as TwoVenueConfig, TwoVenueMarket, simulate as simulate_two_venue,
+)
 from .decision_cost import (
     BreakEven, Config as DecisionCostConfig, find_break_even_cost, population,
     run_decision_cost, run_study as run_decision_cost_study, settled_share,
 )
 
 __all__ = [
+    # shared wrapper
     "ExperimentError", "ExperimentResult", "run_experiment",
+    # 5.1 Coase threshold
     "CoaseConfig", "CoaseThreshold", "CoaseZIC", "coase_friction_stack", "coase_metrics",
     "default_levels", "find_coase_threshold", "max_volume", "run_coase", "split_friction",
+    # 5.2 decision cost
     "BreakEven", "DecisionCostConfig", "find_break_even_cost", "population",
     "run_decision_cost", "run_decision_cost_study", "settled_share",
+    # 5.3 adverse selection
     "AdverseSelectionConfig", "GMMaker", "GMQuote", "adverse_selection_report",
     "gm_zero_profit_spread", "maker_split", "mitigation", "run_adverse_selection",
     "run_adverse_selection_study",
+    # 5.4 fee wars on two venues
     "Detection", "FeeWarsConfig", "LotFee", "TwoVenueConfig", "TwoVenueMarket", "best_response",
     "detect", "fee_grid", "fee_wars_report", "probe_seeds", "run_fee_wars", "simulate_two_venue",
+    # 5.5 funding-rate arbitrage
     "FundingArbConfig", "GasThreshold", "InventoryMaker", "RetailFlow", "entry_threshold_gas",
-    "find_gas_threshold", "funding_arb_bound", "funding_arb_metrics", "run_funding_arb",
+    "find_gas_threshold", "funding_arb_bound", "funding_arb_levels", "funding_arb_metrics",
+    "run_funding_arb",
+    # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
-    "register_experiment", "resolve_config", "run_from_config",
+    "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",
 ]

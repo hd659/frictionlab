@@ -36,6 +36,7 @@ from .noise import _prob
 
 
 def tick_grid(lo: int, hi: int, step: int = 1) -> np.ndarray:
+    """Integer-tick value grid `lo..hi` (inclusive) with `step`, as int64."""
     lo, hi = _check_int("lo", lo, positive=True), _check_int("hi", hi, positive=True)
     step = _check_int("step", step, positive=True)
     if hi < lo:
@@ -52,6 +53,7 @@ def trade_likelihood(grid: np.ndarray, price: int, side: Side,
 
 
 class BayesianLearner(Agent):
+    """Updates a posterior over a value grid from trade signs and trades on its posterior mean."""
     def __init__(self, agent_id: int, grid: Sequence[int], *,
                  prior: Optional[Sequence[float]] = None, mu: float = 0.3,
                  noise_buy_prob: float = 0.5, frictions=None, order_size: int = 1,

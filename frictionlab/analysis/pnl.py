@@ -24,6 +24,7 @@ Mark = Union[int, Mapping[int, int], Callable[[object], int]]
 
 @dataclass(frozen=True)
 class PnLBreakdown:
+    """Agent or group PnL split into trading, fees and decision costs (`net` is the total)."""
     trading: int = 0          # gross PnL of fills at the mark
     fees: int = 0             # friction charges paid (rebates negative)
     decision_costs: int = 0   # deliberation charges paid
@@ -81,6 +82,7 @@ def pnl_breakdown(result, mark: Mark,
 
 
 def total(parts: Iterable[PnLBreakdown]) -> PnLBreakdown:
+    """Sum of `PnLBreakdown`s; the empty sum is a zero breakdown."""
     out = ZERO
     for p in parts:
         out = out + p

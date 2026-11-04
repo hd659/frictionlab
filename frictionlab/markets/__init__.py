@@ -5,6 +5,7 @@
 - `ConcentratedLiquidityAMM`: v3-style pool with liquidity on integer-tick
   ranges `[tick_lower, tick_upper)`; swaps cross initialized ticks and share the
   quote/swap interface and ledger settlement of the constant-product pool.
+  `sqrt_at`, `base_delta` and `quote_delta` are its Q96 fixed-point helpers.
 - `PerpMarket`: perpetual futures venue; marks off its own book mid, reads an
   index (e.g. `FundamentalProcess`) and settles a clamped periodic funding
   rate in integer ticks through the ledger, remainders to a funding sink.
@@ -20,7 +21,10 @@
   splitting only when no single venue has the depth.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
-from .amm_cl import MAX_TICK, MIN_TICK, ConcentratedLiquidityAMM, Position, SwapPlan
+from .amm_cl import (
+    MAX_TICK, MIN_TICK, Q96, ConcentratedLiquidityAMM, Position, SwapPlan, base_delta,
+    quote_delta, sqrt_at,
+)
 from .amm_cp import BPS_DENOM, ConstantProductAMM, SwapRejected, SwapResult, settle_swap
 from .perp import PERP_SINK_ID, FundingEvent, PerpMarket
 from .batch_auction import (
@@ -29,9 +33,18 @@ from .batch_auction import (
 from .fee_tiers import SINK_POLICIES, FeeComponent, FeeTier, FeeTierSchedule, settle_tiered
 from .router import RouteLeg, RoutePlan, RouteVenue, VenueRouter, quote_leg
 
-__all__ = ["BPS_DENOM", "MAX_TICK", "MIN_TICK", "PERP_SINK_ID", "BatchAuction", "BatchVenue",
-           "Clearing", "ConcentratedLiquidityAMM", "ConstantProductAMM", "FeeComponent",
-           "FeeTier", "FeeTierSchedule", "FundingEvent", "PerpMarket", "Position",
-           "RouteLeg", "RoutePlan", "RouteVenue", "SINK_POLICIES", "SwapPlan",
-           "SwapRejected", "SwapResult", "VenueRouter", "batch_runner", "clearing_price",
-           "pro_rata", "quote_leg", "settle_swap", "settle_tiered"]
+__all__ = [
+    # constants
+    "BPS_DENOM", "MAX_TICK", "MIN_TICK", "PERP_SINK_ID", "Q96", "SINK_POLICIES",
+    # AMMs
+    "ConcentratedLiquidityAMM", "ConstantProductAMM", "Position", "SwapPlan",
+    "SwapRejected", "SwapResult", "base_delta", "quote_delta", "settle_swap", "sqrt_at",
+    # perpetuals
+    "FundingEvent", "PerpMarket",
+    # batch auction
+    "BatchAuction", "BatchVenue", "Clearing", "batch_runner", "clearing_price", "pro_rata",
+    # fee tiers
+    "FeeComponent", "FeeTier", "FeeTierSchedule", "settle_tiered",
+    # routing
+    "RouteLeg", "RoutePlan", "RouteVenue", "VenueRouter", "quote_leg",
+]
