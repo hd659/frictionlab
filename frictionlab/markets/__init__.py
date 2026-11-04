@@ -19,6 +19,10 @@
 - `VenueRouter`: routes a marketable intent across named books by integer
   all-in cost (tiered taker fee + walked slippage + fixed cost), ties by id,
   splitting only when no single venue has the depth.
+- `SearchMarket` / `ReservationPolicy`: decentralized bilateral search venue;
+  seeded Poisson meetings charge a per-search cost to a search-cost sink, pairs
+  trade at an integer Nash split when reservations cross, unsold seller value
+  may perish by a fixed tick decay down to a floor.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -32,10 +36,12 @@ from .batch_auction import (
 )
 from .fee_tiers import SINK_POLICIES, FeeComponent, FeeTier, FeeTierSchedule, settle_tiered
 from .router import RouteLeg, RoutePlan, RouteVenue, VenueRouter, quote_leg
+from .search_market import SEARCH_SINK_ID, Meeting, ReservationPolicy, SearchAgent, SearchMarket
 
 __all__ = [
     # constants
-    "BPS_DENOM", "MAX_TICK", "MIN_TICK", "PERP_SINK_ID", "Q96", "SINK_POLICIES",
+    "BPS_DENOM", "MAX_TICK", "MIN_TICK", "PERP_SINK_ID", "Q96", "SEARCH_SINK_ID",
+    "SINK_POLICIES",
     # AMMs
     "ConcentratedLiquidityAMM", "ConstantProductAMM", "Position", "SwapPlan",
     "SwapRejected", "SwapResult", "base_delta", "quote_delta", "settle_swap", "sqrt_at",
@@ -47,4 +53,6 @@ __all__ = [
     "FeeComponent", "FeeTier", "FeeTierSchedule", "settle_tiered",
     # routing
     "RouteLeg", "RoutePlan", "RouteVenue", "VenueRouter", "quote_leg",
+    # search
+    "Meeting", "ReservationPolicy", "SearchAgent", "SearchMarket",
 ]

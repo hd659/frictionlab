@@ -117,5 +117,12 @@ is held in place by a test or a CI gate (`docs/phase6-ecosystem.md`).
   any missing page, missing anchor or external URL. `examples/phase6_ecosystem.py --small`
   runs the whole chain into one directory.
 
-## Ongoing maintenance (after Phase 6, loop forever)
+## Phase 7: Search and perishability frictions
+- [x] Decentralized bilateral search venue: unit buyers / sellers with integer-tick values meet pairwise on the clock via a seeded Poisson matching process (`meeting_rate`); each meeting charges both sides a per-search cost priced by the friction stack and moved to a search-cost sink (`SEARCH_SINK_ID`); a pair trades one lot iff reservations cross, at an integer Nash split (buyer weight in bps, remainder to the seller); optional perishability decays an unsold seller's value by fixed ticks per interval down to a floor; `ReservationPolicy` is `fixed` or the myopic optimal stopping rule against a known uniform counterparty; fills reduce to `TradeRecord` (venue "search") and settle through the ledger; frictionless runs reach the competitive-equilibrium quantity (`markets/search_market.py`)
+- [ ] Search-cost experiment: volume, realized surplus and time-to-trade vs per-search cost and meeting rate, against the Diamond-paradox and frictionless CE benchmarks, with an example and write-up
+- [ ] Perishability and endogenous reservation dynamics: reservation prices that respond to elapsed time and decay (sequential optimal stopping with a deadline), welfare loss from spoilage vs search cost, registered in the experiment registry with a small preset
+
+Phase 7 status: in progress (1 of 3). The search venue is in place; experiments come next.
+
+## Ongoing maintenance (after Phase 7, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.
