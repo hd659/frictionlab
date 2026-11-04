@@ -3,11 +3,9 @@
     frictionlab list
     frictionlab validate examples/configs/coase_small.json
     frictionlab show-config examples/configs/coase_small.json --seed 7
-    frictionlab run examples/configs/fee_wars_small.json --out runs/fee_wars \
-        --set params.max_rounds=4
-    frictionlab bench --size small --json bench.json \
-        --compare benchmarks/baseline_small.json
-    frictionlab docs build --src docs --out site
+    frictionlab run examples/configs/fee_wars_small.json --set params.max_rounds=4
+    frictionlab bench --size small --compare benchmarks/baseline_small.json
+    frictionlab docs build --src docs --out site && frictionlab docs check site
 
 Overrides are applied in a fixed order: the config file, then flags (`--small`,
 `--seed`, `--workers`), then each `--set key.path=value` left to right. A `--set`
@@ -15,15 +13,14 @@ value is parsed as JSON when it parses (`5`, `[0,10]`, `true`, `null`), else kep
 a string. `--out` only picks the destination directory; it is not written into the
 resolved config, so artifacts are byte-identical wherever they are written.
 
-`bench` times the fl-038 scenarios and prints a table; `--compare` exits 1 on any
-checksum mismatch against the baseline (results changed), never on timing.
-`docs build` renders the pages linked from `docs/index.md` into a static site, plus
-the generated API reference under `api/` (`--no-api` skips it); a missing index or
-linked page is a usage error (2).
+`bench --compare` exits 1 on any checksum mismatch against the baseline, never on
+timing. `docs build` renders the pages linked from `docs/index.md` plus the API
+reference (`--no-api` skips it); `docs check DIR` exits 2 on any broken internal link
+or anchor, or any http(s) link not matched by `--allow`.
 
-Exit codes: 0 success, 2 config or usage error, 1 runtime error. Errors go to
-stderr with their dotted paths; tracebacks only with `--debug`. `main(argv)`
-returns the code instead of exiting, so tests call it in-process.
+Exit codes: 0 success, 2 config or usage error (including a missing docs page or a
+broken link), 1 runtime error. Errors go to stderr; tracebacks only with `--debug`.
+`main(argv)` returns the code instead of exiting, so tests call it in-process.
 """
 from __future__ import annotations
 
@@ -49,10 +46,9 @@ def parse_set(item: str) -> tuple:
     if not sep or not all(parts):
         raise ConfigError([("--set", f"expected key.path=value, got {item!r}")])
     try:
-        value = json.loads(raw)
+        return parts, json.loads(raw)
     except ValueError:
-        value = raw
-    return parts, value
+        return parts, raw
 
 
 def apply_overrides(raw: Any, args: argparse.Namespace) -> Dict[str, Any]:
@@ -60,12 +56,10 @@ def apply_overrides(raw: Any, args: argparse.Namespace) -> Dict[str, Any]:
     if not isinstance(raw, dict):
         raise ConfigError([("<root>", f"expected a mapping, got {type(raw).__name__}")])
     out = json.loads(json.dumps(raw))                  # deep copy, JSON-normalized
-    if args.small:
-        out["small"] = True
-    if args.seed is not None:
-        out["master_seed"] = args.seed
-    if args.workers is not None:
-        out["n_workers"] = args.workers
+    for key, val in (("small", args.small or None), ("master_seed", args.seed),
+                     ("n_workers", args.workers)):
+        if val is not None:
+            out[key] = val
     for item in args.set or ():
         parts, value = parse_set(item)
         node = out
@@ -87,9 +81,8 @@ def _load(args: argparse.Namespace) -> Dict[str, Any]:
 
 def cmd_list(args: argparse.Namespace) -> int:
     """`frictionlab list`: print each registered experiment and its summary."""
-    names = list_experiments()
-    width = max(map(len, names), default=0)
-    for n in names:
+    width = max(map(len, list_experiments()), default=0)
+    for n in list_experiments():
         print(f"{n:<{width}}  {get_experiment(n).doc}")
     return OK
 
@@ -120,8 +113,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     res.report().write_report(out / "report.html")
     print(f"{cfg.experiment}: {len(res.rows)} rows, master_seed={cfg.master_seed}, "
           f"replicates={cfg.replicates}")
-    for name in ARTIFACTS:
-        print(f"  wrote {out / name}")
+    print("\n".join(f"  wrote {out / name}" for name in ARTIFACTS))
     return OK
 
 
@@ -147,18 +139,31 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return OK if cmp.ok else RUNTIME
 
 
-def cmd_docs_build(args: argparse.Namespace) -> int:
-    """`frictionlab docs build`: build the static docs site and API reference."""
-    from .docs_site import DocsError, build_site       # lazy, like bench
+def _docs(fn, *a, **kw):
+    """Call a docs_site function (imported lazily), mapping DocsError to a usage error."""
+    from .docs_site import DocsError
     try:
-        res = build_site(args.src, args.out, api=args.api)
+        return fn(*a, **kw)
     except DocsError as e:
         raise ConfigError([(e.path, e.message)]) from None
-    n_api = sum(1 for n in res.names() if n.startswith("api/"))
-    print(f"docs: {len(res.pages) - n_api} pages from {args.src}, {n_api} API pages")
-    for p in res.pages:
-        print(f"  wrote {p}")
+
+
+def cmd_docs_build(args: argparse.Namespace) -> int:
+    """`frictionlab docs build`: build the static docs site and API reference."""
+    from .docs_site import build_site                  # lazy, like bench
+    res = _docs(build_site, args.src, args.out, api=args.api)
+    n_api = sum(n.startswith("api/") for n in res.names())
+    print(f"docs: {len(res.pages) - n_api} pages from {args.src}, {n_api} API pages\n"
+          + "\n".join(f"  wrote {p}" for p in res.pages))
     return OK
+
+
+def cmd_docs_check(args: argparse.Namespace) -> int:
+    """`frictionlab docs check`: link-check a built site; exit 2 on any broken link."""
+    from .docs_site import check_site
+    res = _docs(check_site, args.dir, src=args.src, allow=args.allow or ())
+    print(res.format(), file=sys.stdout if res.ok else sys.stderr)
+    return OK if res.ok else USAGE
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -173,22 +178,20 @@ def build_parser() -> argparse.ArgumentParser:
     over.add_argument("--workers", type=int, help="override n_workers")
     over.add_argument("--set", action="append", metavar="KEY.PATH=VALUE",
                       help="override any config key; applied last, left to right")
-
     p = argparse.ArgumentParser(prog="frictionlab",
                                 description="Agent-based simulator for markets with friction.")
     sub = p.add_subparsers(dest="command", metavar="COMMAND")
     sub.required = True
     run = sub.add_parser("run", parents=[common, over], help="run an experiment from a config")
-    run.add_argument("--out", metavar="DIR",
-                     help="output directory (default: config 'output', else frictionlab_runs/NAME)")
+    run.add_argument("--out", metavar="DIR", help="output dir (default: config 'output', "
+                     "else frictionlab_runs/NAME)")
     run.set_defaults(func=cmd_run)
-    sub.add_parser("list", parents=[common], help="list registered experiments"
-                   ).set_defaults(func=cmd_list)
-    sub.add_parser("validate", parents=[common, over], help="check a config without running"
-                   ).set_defaults(func=cmd_validate)
-    sub.add_parser("show-config", parents=[common, over],
-                   help="print the fully resolved config as canonical JSON"
-                   ).set_defaults(func=cmd_show_config)
+    for name, parents, fn, text in (
+            ("list", [common], cmd_list, "list registered experiments"),
+            ("validate", [common, over], cmd_validate, "check a config without running"),
+            ("show-config", [common, over], cmd_show_config,
+             "print the fully resolved config as canonical JSON")):
+        sub.add_parser(name, parents=parents, help=text).set_defaults(func=fn)
     b = sub.add_parser("bench", parents=[common], help="time the benchmark scenarios")
     b.add_argument("--scenario", action="append", metavar="NAME",
                    help="run only this scenario (repeatable; default: all)")
@@ -196,20 +199,23 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--repeat", type=int, default=3, help="timed repeats (default 3)")
     b.add_argument("--warmup", type=int, default=1, help="untimed warmup runs (default 1)")
     b.add_argument("--json", metavar="PATH", help="write results as sorted-key JSON")
-    b.add_argument("--checksums-only", action="store_true",
-                   help="with --json: drop timings (baseline format)")
-    b.add_argument("--compare", metavar="BASELINE",
-                   help="diff against a result file; exit 1 on checksum mismatch")
+    b.add_argument("--checksums-only", action="store_true", help="with --json: no timings")
+    b.add_argument("--compare", metavar="BASELINE", help="exit 1 on any checksum mismatch")
     b.set_defaults(func=cmd_bench)
-    d = sub.add_parser("docs", help="documentation tools").add_subparsers(
-        dest="docs_command", metavar="ACTION")
+    d = sub.add_parser("docs", help="docs tools").add_subparsers(dest="docs", metavar="ACTION")
     d.required = True
     db = d.add_parser("build", parents=[common], help="build the static docs site")
-    db.add_argument("--src", default="docs", help="docs source directory (default docs)")
+    dc = d.add_parser("check", parents=[common], help="link-check a built docs site")
+    for q in (db, dc):
+        q.add_argument("--src", default="docs", help="docs source directory (default docs)")
     db.add_argument("--out", default="site", metavar="DIR", help="output dir (default site)")
     db.add_argument("--api", action=argparse.BooleanOptionalAction, default=True,
                     help="also generate the API reference under api/ (default on)")
     db.set_defaults(func=cmd_docs_build)
+    dc.add_argument("dir", help="built site directory")
+    dc.add_argument("--allow", action="append", metavar="PREFIX",
+                    help="allow external links starting with PREFIX (default: none)")
+    dc.set_defaults(func=cmd_docs_check)
     return p
 
 

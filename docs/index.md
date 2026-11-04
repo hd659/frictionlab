@@ -62,7 +62,12 @@ byte-reproducible HTML report.
 - [Phase 6: performance work](phase6-performance.md) covers the benchmark harness, the
   vectorized order book, the ledger and fee-stack fast path, and the batch auction sweep.
   Each step was checked against a frozen oracle, and every checksum stayed unchanged.
-- Tooling: the CLI and config schema are documented in the [README](../README.md#cli-quickstart).
+- [Phase 6: the ecosystem around the simulator](phase6-ecosystem.md) covers config
+  precedence, the experiment registry, CLI exit codes, the checksum-only bench gate, the
+  oracle rule for performance PRs, and how the docs site, API reference and link check
+  are built.
+  Example: `examples/phase6_ecosystem.py`.
+- Tooling: the CLI quickstart is in the [README](../README.md#cli-quickstart).
   CI and the contribution workflow are in [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Conventions used across the write-ups
@@ -70,4 +75,5 @@ byte-reproducible HTML report.
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
 - Every headline number cites its seed. A regression test pins it, so a doc and its
   example cannot drift apart without a failing test.
-- `tests/test_repo_hygiene.py` checks that this index links every `docs/phase*.md`.
+- `tests/test_repo_hygiene.py` checks that this index links every `docs/phase*.md`, and
+  `frictionlab docs check` checks that every link and anchor in the built site resolves.

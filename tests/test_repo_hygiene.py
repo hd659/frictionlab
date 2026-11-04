@@ -88,6 +88,25 @@ def test_workflow_yaml_references_tests_bench_and_baseline():
     assert (ROOT / BASELINE).is_file()
 
 
+def test_workflow_docs_job_builds_then_checks_without_deploy():
+    yaml = pytest.importorskip("yaml")
+    jobs = yaml.safe_load(WORKFLOW.read_text("utf-8"))["jobs"]
+    runs = _workflow_runs({"jobs": {"docs": jobs["docs"]}})
+    build = re.search(r"frictionlab docs build\b[^\n]*--out (\S+)", runs)
+    check = re.search(r"frictionlab docs check (\S+)", runs)
+    assert build and check, "docs job must run `docs build --out DIR` and `docs check DIR`"
+    assert build.group(1) == check.group(1) == "_site" and build.start() < check.start()
+    uses = [str(s.get("uses", "")) for s in jobs["docs"]["steps"]]
+    assert not any("pages" in u or "deploy" in u for u in uses)
+    assert not re.search(r"--allow\b|curl |wget ", runs)
+
+
+def test_workflow_text_references_docs_build_and_check():
+    text = WORKFLOW.read_text("utf-8")
+    assert "frictionlab docs build --out _site" in text
+    assert "frictionlab docs check _site" in text
+
+
 def test_workflow_text_has_no_timing_threshold():
     text = WORKFLOW.read_text("utf-8")
     assert BASELINE in text and "pytest" in text
@@ -109,6 +128,7 @@ def test_docs_index_links_every_phase_doc():
     assert phases
     unlinked = [p.name for p in phases if p.resolve() not in linked]
     assert not unlinked, f"docs/index.md does not link: {unlinked}"
+    assert (ROOT / "docs" / "phase6-ecosystem.md").resolve() in linked
 
 
 def test_markdown_relative_links_resolve():

@@ -89,35 +89,33 @@ five into one byte-reproducible HTML.
     - [x] Vectorized book: integer-tick dict-of-deque levels, heapq best-price index with lazy level deletion, O(1) cancel by order id, `depth_array` int64 snapshots, optional numba kernel behind `FRICTIONLAB_NUMBA` with numpy fallback; pre-change book frozen as the oracle, all fl-038 checksums unchanged (`core/order_book.py`, `core/book_levels.py`, `tests/reference_order_book.py`, `docs/phase6-performance.md`)
     - [x] Ledger / fee-stack hot path: integer linear-term fast path folded once per stack (exact ceil division, `Fraction` fallback for non-integer rates), `type(x) is int` guard with identical errors, per-trade conservation check with per-leg strict mode behind `FRICTIONLAB_STRICT_LEDGER`; pre-change fees frozen as `tests/reference_fees.py`, all fl-038 checksums unchanged (`costs/fees.py`, `costs/stack.py`, `core/ledger.py`)
     - [x] Batch auction clear: one aggregation pass into integer-tick demand / supply maps, single sorted running-sum sweep over change points with the same tie-break order (max volume, min imbalance, closest to previous price, lower price), priority sort only for executable orders, unchanged pro-rata rounding; pre-change clear frozen as `tests/reference_batch_auction.py`, all fl-038 checksums unchanged, medium `batch_auction_clear` 3.9x (`markets/batch_auction.py`, `bench/scenarios.py` `DEEP_BATCH`)
-- [ ] Documentation site, contribution guide, CI
+- [x] Documentation site, contribution guide, CI
   - [x] CI: GitHub Actions on push / pull_request over Python 3.10-3.12 with pip caching; pytest, `frictionlab bench --size small --compare benchmarks/baseline_small.json` as a checksum-only gate (no timing thresholds), `python -m frictionlab validate` over every `examples/configs/*.json`; optional numba job (`FRICTIONLAB_NUMBA=1`) rerunning the order book oracle tests (`ci/ci.yml`)
   - [x] Contribution guide: design principles (seeded reproducibility, integer ticks, one concept per 100-250 line module, tests with every module), local test / bench workflow, performance PR rule (checksums unchanged, oracle frozen under `tests/reference_*.py`), adding an experiment through the fl-036 registry, `type(scope): summary` commits (`CONTRIBUTING.md`)
   - [x] Repo hygiene tests: workflow wiring (YAML parsed when PyYAML is present), ROADMAP doc links exist, `docs/index.md` links every `docs/phase*.md`, example configs validate, module line ceiling with an explicit capped allowlist, no personal URL hosts or absolute home paths in tracked text (`tests/test_repo_hygiene.py`)
   - [x] Documentation site: seeded by `docs/index.md`, which links every phase write-up in order; static site build and API reference
     - [x] Static site build: stdlib Markdown subset (slugged headings, nested lists, fenced code, pipe tables, all text escaped), page order from `docs/index.md`, embedded-CSS layout with sidebar nav, prev/next and h2/h3 TOC, `.md` -> `.html` link rewriting, byte-reproducible output, `frictionlab docs build [--src docs] [--out DIR]` (`frictionlab/docs_site/`)
     - [x] API reference: per-package pages under `api/` from `__all__` (or own re-exports), address-free normalized signatures, docstrings, class members, qualified-name anchors and cross-references, `api/index.html` with symbol counts, `--api/--no-api` build flag, `api_coverage` reporting no undocumented public symbol (`frictionlab/docs_site/api_ref.py`)
+    - [x] Link check and wrap-up: `frictionlab docs check DIR` parses every built page with `html.parser`, resolves each internal href to an output file and each `#fragment` to an element id, reports all broken links in one pass, flags any http(s) link outside an empty-by-default allowlist, exits 2 on any break; CI `docs` job builds and checks `_site` (no deploy, no network); `examples/phase6_ecosystem.py` runs validate / run / bench gate / docs build / docs check into one directory with a manifest (`frictionlab/docs_site/linkcheck.py`, `docs/phase6-ecosystem.md`)
 
-Phase 6 status: in progress (benchmarks and performance item done; CI, contribution guide
-and repo hygiene tests are in; the documentation site, including the generated API reference, is done). The config schema, registry and CLI are in: a JSON config
-(`examples/configs/coase_small.json`) resolves deterministically (defaults, then small
-preset, then user params), runs any of the five Phase 5 experiments with rows identical to
-the direct call, and records the resolved config in the fl-026 report header.
-`frictionlab run CONFIG --out DIR` writes byte-reproducible artifacts for a fixed seed;
-`validate` lists every bad dotted path in one pass. The benchmark harness is in:
-`frictionlab bench --compare benchmarks/baseline_small.json` fails on any checksum drift, so
-optimizations must keep results identical. Performance work is closed out against those
-checksums, each step checked against a frozen pre-change oracle: the vectorized book
-(1.20-1.32x book-only), the ledger / fee-stack fast path (fees 10-16x, settlement 5-6x,
-`book_random_flow` / `amm_swap_stream` about 1.4x end to end) and the batch auction clear
-(a sorted sweep over aggregated ticks, `batch_auction_clear` 2.6x small / 3.9x medium).
-End-to-end time is now dominated by agent decision code and `MarketView` construction in the
-runner scenarios, and by order construction / validation in the book and AMM streams
-(`docs/phase6-performance.md`). CI now runs the test suite, the checksum gate and config
-validation on Python 3.10-3.12 for every push, and `CONTRIBUTING.md` writes down the rules
-the earlier phases followed. `frictionlab docs build` now renders the pages linked from `docs/index.md` into a
-byte-reproducible static site with no JavaScript or external assets, plus an API reference
-for every public symbol; `api_coverage` keeps public docstrings complete, and the fl-038
-checksums confirm the docstring pass changed no behavior.
+Phase 6 status: complete. The simulator now has an ecosystem around it, and every piece
+is held in place by a test or a CI gate (`docs/phase6-ecosystem.md`).
+- Config and registry: JSON / YAML configs resolve deterministically (defaults < small
+  preset < file < flags < `--set`), and every bad dotted path is reported in one pass.
+  The five Phase 5 experiments run from config with rows identical to the direct call.
+- CLI: `frictionlab run / list / validate / show-config / bench / docs build / docs check`
+  with exit codes 0 / 1 runtime / 2 config-usage; `run` artifacts are byte-reproducible.
+- Benchmarks and performance: five seeded scenarios and a checksum-only baseline; vectorized
+  book (1.20-1.32x book-only), ledger / fee fast path (fees 10-16x, settlement 5-6x) and
+  batch auction sweep (3.9x medium), each against a frozen `tests/reference_*.py` oracle
+  with every checksum unchanged (`docs/phase6-performance.md`).
+- CI and contribution guide: tests, checksum gate and config validation on Python
+  3.10-3.12, an optional numba oracle job, and a `docs` job that builds the site and
+  link-checks it; `CONTRIBUTING.md` records the rules; repo hygiene tests guard the wiring.
+- Documentation: a stdlib, byte-reproducible static site from `docs/index.md` with a
+  generated API reference (no undocumented public symbol) and a link checker that fails on
+  any missing page, missing anchor or external URL. `examples/phase6_ecosystem.py --small`
+  runs the whole chain into one directory.
 
 ## Ongoing maintenance (after Phase 6, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.
