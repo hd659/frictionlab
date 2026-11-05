@@ -13,6 +13,11 @@ callable form values each fill at a private valuation (Gode-Sunder surplus,
 or a `BoundedRationalAgent.valuation`). Summed over all agents at a common
 mark, trading PnL is zero and the net totals equal minus the fees plus
 decision costs collected: trading between agents only moves surplus around.
+
+`middleman_pnl` (fl-049) splits a search-market `Middleman`'s PnL, inventory
+carried at cost basis, into spread capture (asks received minus the basis of
+units sold), holding cost and decay loss; `net` equals its ledger cash change
+plus the basis of units still held, exactly in ticks.
 """
 from __future__ import annotations
 
@@ -98,3 +103,38 @@ def breakdown_by(result, mark: Mark, key: Callable[[object], Hashable] = None,
         k = key(result.agents[aid])
         out[k] = out.get(k, ZERO) + b
     return out
+
+
+@dataclass(frozen=True)
+class MiddlemanPnL:
+    """Middleman PnL in ticks: `net = spread_capture - holding_cost - decay_loss`."""
+    spread_capture: int = 0   # sum(ask) - sum(basis) over units sold
+    holding_cost: int = 0     # carry charges routed to the hold sink
+    decay_loss: int = 0       # spoilage routed to the decay sink
+    bought: int = 0
+    sold: int = 0
+    held_basis: int = 0       # cost basis of units still in inventory
+
+    @property
+    def net(self) -> int:
+        return self.spread_capture - self.holding_cost - self.decay_loss
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"spread_capture": self.spread_capture, "holding_cost": self.holding_cost,
+                "decay_loss": self.decay_loss, "net": self.net, "bought": self.bought,
+                "sold": self.sold, "held_basis": self.held_basis}
+
+
+def middleman_pnl(market) -> MiddlemanPnL:
+    """Split the middleman PnL of a fl-046 `SearchMarket` run from its fills and carry log."""
+    mm = market.middleman
+    if mm is None:
+        raise ValueError("market has no middleman")
+    fills = [t for t in market.trades if mm.agent_id in (t.buyer_id, t.seller_id)]
+    asks = sum(t.price for t in fills if t.seller_id == mm.agent_id)
+    bids = sum(t.price for t in fills if t.buyer_id == mm.agent_id)
+    sold = sum(1 for t in fills if t.seller_id == mm.agent_id)
+    held = sum(u.basis for u in mm.inventory)
+    hold = sum(row[2] for row in market.carries)
+    spoil = sum(row[3] for row in market.carries)
+    return MiddlemanPnL(asks - (bids - held), hold, spoil, len(fills) - sold, sold, held)

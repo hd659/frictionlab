@@ -34,7 +34,7 @@ from .metrics import (
     impact_by_size, price_efficiency, spread_decomposition, trade_records, variance_ratio,
 )
 from .plots import bar_chart, heatmap, line_chart, multi_line_chart
-from .pnl import PnLBreakdown, breakdown_by, pnl_breakdown, total
+from .pnl import MiddlemanPnL, PnLBreakdown, breakdown_by, middleman_pnl, pnl_breakdown, total
 from .report import Report, frictionlab_version, write_report
 from .report_sections import (
     EquilibriumSection, MetricsSection, PnLSection, Section, SweepSection,
@@ -58,7 +58,7 @@ from .welfare import (
 )
 
 __all__ = [
-    "PnLBreakdown", "breakdown_by", "pnl_breakdown", "total",
+    "MiddlemanPnL", "PnLBreakdown", "breakdown_by", "middleman_pnl", "pnl_breakdown", "total",
     "QuoteRecorder", "SpreadStats", "markout_pnl", "pnl_by_agent", "pnl_by_type",
     "spread_stats", "volume_between",
     "EfficiencyStats", "MidPath", "SpreadDecomposition", "TradeMetrics", "TradeRecord",
