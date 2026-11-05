@@ -119,10 +119,12 @@ is held in place by a test or a CI gate (`docs/phase6-ecosystem.md`).
 
 ## Phase 7: Search and perishability frictions
 - [x] Decentralized bilateral search venue: unit buyers / sellers with integer-tick values meet pairwise on the clock via a seeded Poisson matching process (`meeting_rate`); each meeting charges both sides a per-search cost priced by the friction stack and moved to a search-cost sink (`SEARCH_SINK_ID`); a pair trades one lot iff reservations cross, at an integer Nash split (buyer weight in bps, remainder to the seller); optional perishability decays an unsold seller's value by fixed ticks per interval down to a floor; `ReservationPolicy` is `fixed` or the myopic optimal stopping rule against a known uniform counterparty; fills reduce to `TradeRecord` (venue "search") and settle through the ledger; frictionless runs reach the competitive-equilibrium quantity (`markets/search_market.py`)
-- [ ] Search-cost experiment: volume, realized surplus and time-to-trade vs per-search cost and meeting rate, against the Diamond-paradox and frictionless CE benchmarks, with an example and write-up
+- [x] Search-cost experiment: volume, realized surplus and time-to-trade vs per-search cost and meeting rate, against the Diamond-paradox and frictionless CE benchmarks, with an example and write-up (`experiments/search_cost.py`, registered as `search_cost`, config `examples/configs/search_cost_small.json`)
+  - [x] Seeded example `examples/phase7_search_cost.py --small`: runs the config through the CLI, prints the search-cost table, collapse thresholds and a decay view, and renders one offline report (surplus-share heatmap plus surplus split); `examples/phase5_summary_report.py --include-phase7` adds a sixth section
+  - [x] Write-up `docs/phase7-search-cost.md`: reservation-price stopping rule, search cost vs decay, collapse bound vs the fl-028 Coase threshold; linked from `docs/index.md` and link-checked in the docs site
 - [ ] Perishability and endogenous reservation dynamics: reservation prices that respond to elapsed time and decay (sequential optimal stopping with a deadline), welfare loss from spoilage vs search cost, registered in the experiment registry with a small preset
 
-Phase 7 status: in progress (1 of 3). The search venue is in place; experiments come next.
+Phase 7 status: in progress (2 of 3). On seed 47 (small preset) volume falls 6 -> 3 -> 0 and surplus share 1.00 -> 0.80 -> 0.00 as search cost goes 0 -> 30 -> 52; the bisected half-volume collapse is 33 ticks against an analytic bound of 51; at search cost 10, decay 0 -> 8 lowers the mean price 70.00 -> 61.33 and the time to match 21.89 -> 4.67. Endogenous reservation dynamics come next.
 
 ## Ongoing maintenance (after Phase 7, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.

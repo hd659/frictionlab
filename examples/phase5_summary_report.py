@@ -7,12 +7,18 @@ body holds exactly one `ExperimentSection` per `ExperimentResult`: a findings
 table (scalars only) plus an fl-023 sweep table and chart of its key metric.
 Nothing time-dependent is written, so two runs give byte-identical HTML.
 
-    python examples/phase5_summary_report.py [--out DIR]
+`--include-phase7` appends a sixth section for the fl-047 search-cost
+experiment (run from `examples/configs/search_cost_small.json`); without it the
+five-section report is byte-identical to what it was before Phase 7.
+
+    python examples/phase5_summary_report.py [--out DIR] [--include-phase7]
 """
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import importlib.util
+import json
 import numbers
 import sys
 import tempfile
@@ -113,14 +119,35 @@ def funding_arb() -> Spec:
             res.rows, res.param_keys, "mean_abs_premium")
 
 
+def search_cost() -> Spec:
+    from frictionlab.experiments import find_search_collapse, run_from_config, search_cost as sc
+    raw = json.loads((HERE / "configs" / "search_cost_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    cfg = registry_config(sc.Config, res.config["params"])
+    col = find_search_collapse(cfg, 0.5, 0, master_seed=res.master_seed)
+    f = res.findings
+    return (res, f"volume {f['baseline_volume']:g} -> {f['costliest_volume']:g} and surplus share "
+                 f"{f['baseline_surplus_share']:.2f} -> {f['costliest_surplus_share']:.2f} over search cost; "
+                 f"half-volume collapse at {col.threshold} ticks (analytic bound {col.analytic_bound})",
+            res.rows, [sc.COST, sc.DECAY], "surplus_share")
+
+
+def registry_config(cls: type, params: Dict[str, Any]) -> Any:
+    names = {f.name for f in dataclasses.fields(cls)}
+    return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
+
+
 EXPERIMENTS: Tuple[Callable[[], Spec], ...] = (coase, decision_cost, adverse_selection, fee_wars, funding_arb)
+PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost,)
 
 
-def build() -> Report:
-    specs = [run() for run in EXPERIMENTS]
+def build(include_phase7: bool = False) -> Report:
+    specs = [run() for run in EXPERIMENTS + (PHASE7 if include_phase7 else ())]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
-    return Report("frictionlab Phase 5 summary: five friction experiments",
+    title = ("frictionlab Phase 5 summary: five friction experiments" if not include_phase7 else
+             "frictionlab Phase 5 summary: five friction experiments plus Phase 7 search cost")
+    return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
                   sections=[ExperimentSection(*s) for s in specs])
@@ -130,8 +157,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, default=None,
                     help="output directory for phase5_summary.html (default: a fresh temp dir)")
+    ap.add_argument("--include-phase7", action="store_true",
+                    help="append the Phase 7 search-cost experiment as a sixth section")
     a = ap.parse_args(argv)
-    rep = build()
+    rep = build(a.include_phase7)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))

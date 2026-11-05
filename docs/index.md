@@ -70,6 +70,15 @@ byte-reproducible HTML report.
 - Tooling: the CLI quickstart is in the [README](../README.md#cli-quickstart).
   CI and the contribution workflow are in [CONTRIBUTING](../CONTRIBUTING.md).
 
+## Phase 7: search and perishability
+
+- [Phase 7: search costs and perishable value](phase7-search-cost.md) covers the
+  reservation-price stopping rule in the bilateral search market, why search cost and
+  decay push the market in opposite directions, and how the collapse bound relates to
+  the Coase threshold. Config: `examples/configs/search_cost_small.json`.
+  Example: `examples/phase7_search_cost.py`. `examples/phase5_summary_report.py
+  --include-phase7` adds it to the summary report as a sixth section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
