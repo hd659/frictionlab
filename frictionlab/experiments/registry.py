@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, validate_params
-from . import adverse_selection, coase, decision_cost, fee_wars, funding_arb
+from . import adverse_selection, coase, decision_cost, fee_wars, funding_arb, search_cost
 from .base import ExperimentResult
 from .two_venue import MarketConfig
 
@@ -127,7 +127,7 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- the five Phase 5 experiments --------------------------------------------
+# ---- the five Phase 5 experiments and the Phase 7 search experiment ----------
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
     kw = {k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}
@@ -205,3 +205,16 @@ register_experiment(
           "horizon", "until", levels=None, probs=[0.0, 0.1, 0.3, 0.6]),
     small={"probs": [0.0, 0.3, 0.6]},
     master_seed=34, replicates=1, small_replicates=1, doc="funding-rate arbitrage under gas shocks")
+
+register_experiment(
+    "search_cost", lambda p, s, r, w: search_cost.run_search_cost(
+        _build(search_cost.Config, p), p["search_costs"], p["decays"], replicates=r,
+        master_seed=s, n_workers=w),
+    {"search_costs": TICKS, "decays": TICKS, "values": INTS, "costs": INTS,
+     "meeting_rate": Param("float", min=1e-9), "buyer_weight_bps": Param("int", min=0, max=10_000),
+     "floor": POS, "until": NONNEG},
+    _pick(search_cost.Config(), "values", "costs", "meeting_rate", "buyer_weight_bps", "floor",
+          "until", search_costs=[0, 5, 10, 20, 30, 40, 52], decays=[0, 1, 2, 4]),
+    small={"search_costs": [0, 10, 30, 52], "decays": [0, 2], "until": 100.0},
+    master_seed=47, replicates=2, small_replicates=1,
+    doc="search cost x perishability in a bilateral search market")

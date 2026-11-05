@@ -29,8 +29,13 @@
   funding, friction breakdown, net PnL and mean |premium|.
   `entry_threshold_gas` is the analytic per-leg gas bound and
   `find_gas_threshold` bisects for the entry-collapse shock level.
-- `registry` (Phase 6): name -> runner, param schema and defaults for all five
-  experiments; `run_from_config` turns a JSON/YAML config into a result.
+- `search_cost` (Phase 7): the fl-046 `SearchMarket` swept over search_cost x
+  decay_per_step; volume, time to match, surplus share of the CE maximum,
+  search cost paid, decay loss and seller share. `reservation_price` is the
+  analytic stopping-rule reservation and `find_search_collapse` bisects for
+  the volume-collapse search cost against `search_cost_bound`.
+- `registry` (Phase 6): name -> runner, param schema and defaults for every
+  experiment; `run_from_config` turns a JSON/YAML config into a result.
 
 Several modules share short names (`Config`, `run_grid`, `default_levels`), so
 the package re-exports them under prefixed aliases such as `CoaseConfig`.
@@ -60,6 +65,11 @@ from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
     register_experiment, resolve_config, run_from_config, unregister_experiment,
 )
+from .search_cost import (
+    Config as SearchCostConfig, SearchCell, SearchCollapse, ShadedPolicy,
+    analytic_bound as search_cost_bound, find_search_collapse, reservation_price,
+    run_search_cost, search_metrics,
+)
 from .two_venue import (
     LotFee, MarketConfig as TwoVenueConfig, TwoVenueMarket, simulate as simulate_two_venue,
 )
@@ -88,6 +98,9 @@ __all__ = [
     "FundingArbConfig", "GasThreshold", "InventoryMaker", "RetailFlow", "entry_threshold_gas",
     "find_gas_threshold", "funding_arb_bound", "funding_arb_levels", "funding_arb_metrics",
     "run_funding_arb",
+    # 7.2 search cost and perishable value
+    "SearchCell", "SearchCollapse", "SearchCostConfig", "ShadedPolicy", "find_search_collapse",
+    "reservation_price", "run_search_cost", "search_cost_bound", "search_metrics",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",
