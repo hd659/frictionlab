@@ -1,4 +1,9 @@
-"""fl-035: examples/phase5_summary_report.py (all five Phase 5 experiments, one HTML)."""
+"""fl-035: examples/phase5_summary_report.py (all five Phase 5 experiments, one HTML).
+
+fl-051: `--include-phase7` appends search cost and intermediation (seven sections);
+the default five-section output stays byte-identical.
+"""
+import hashlib
 import importlib.util
 import re
 import sys
@@ -13,6 +18,9 @@ NAMES = ("coase_threshold", "decision_cost", "adverse_selection", "fee_wars", "f
 SEEDS = {"coase_threshold": 28, "decision_cost": 29, "adverse_selection": 30, "fee_wars": 32,
          "funding_arb": 34}
 BUDGET_S = 120.0
+# sha256 of the default five-section report, frozen before --include-phase7 existed (fl-048)
+SUMMARY_SHA256 = "473013de2e67abb669812cab1c4e1a33c5a5c95259032327d537feafcab2a7a9"
+PHASE7 = {"search_cost": 47, "intermediation": 50}
 
 
 def load():
@@ -95,6 +103,33 @@ def test_sections_match_the_standalone_examples(ex):
     st = ex.load("phase5_funding_arb").run(34, small=True)
     assert res.rows == st.res.rows and res.findings == st.res.findings
     assert str(st.res.findings["gas_threshold_bisected"]) in headline
+
+
+def test_default_report_is_frozen_and_has_five_sections(run_once):
+    data = run_once[0].read_bytes()
+    assert hashlib.sha256(data).hexdigest() == SUMMARY_SHA256
+    assert len(experiment_sections(parse(data.decode("utf-8")))) == 5
+
+
+@pytest.fixture(scope="module")
+def with_phase7(ex, tmp_path_factory):
+    out = tmp_path_factory.mktemp("summary_p7")
+    assert ex.main(["--out", str(out), "--include-phase7"]) == 0
+    return (out / "phase5_summary.html").read_text(encoding="utf-8")
+
+
+def test_phase7_flag_appends_search_cost_and_intermediation(with_phase7):
+    root = parse(with_phase7)
+    secs = experiment_sections(root)
+    titles = [s.find("h2").text for s in secs]
+    assert len(secs) == 7
+    assert titles[:5] == [f"{n} (seed {SEEDS[n]})" for n in NAMES]
+    assert titles[5:] == [f"{n} (seed {s})" for n, s in PHASE7.items()]
+    assert not re.search(r"https?://", with_phase7, re.I)
+    header = "".join(root.find("body/header").itertext())
+    assert "intermediated share" in header and "search cost 3 (analytic bound 3)" in header
+    assert "Sweep: intermediated_share by search_cost, middleman_half_spread" in "".join(
+        secs[-1].itertext())
 
 
 def test_scalars_drops_nested_findings(ex):

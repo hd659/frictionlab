@@ -7,8 +7,9 @@ body holds exactly one `ExperimentSection` per `ExperimentResult`: a findings
 table (scalars only) plus an fl-023 sweep table and chart of its key metric.
 Nothing time-dependent is written, so two runs give byte-identical HTML.
 
-`--include-phase7` appends a sixth section for the fl-047 search-cost
-experiment (run from `examples/configs/search_cost_small.json`); without it the
+`--include-phase7` appends the two Phase 7 experiments as sections six and
+seven: fl-047 search cost (`examples/configs/search_cost_small.json`) and fl-050
+intermediation (`examples/configs/intermediation_small.json`). Without it the
 five-section report is byte-identical to what it was before Phase 7.
 
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7]
@@ -132,13 +133,28 @@ def search_cost() -> Spec:
             res.rows, [sc.COST, sc.DECAY], "surplus_share")
 
 
+def intermediation() -> Spec:
+    from frictionlab.experiments import (find_intermediation_threshold, intermediation as im,
+                                         run_from_config)
+    raw = json.loads((HERE / "configs" / "intermediation_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    cfg, f = registry_config(im.Config, res.config["params"]), res.findings
+    h = sorted(res.params[im.SPREAD])[min(1, len(res.params[im.SPREAD]) - 1)]
+    th = find_intermediation_threshold(cfg, h, 0.5, master_seed=res.master_seed)
+    return (res, f"intermediated share {f['baseline_intermediated_share']:.2f} at zero spread; at "
+                 f"half-spread {h} it passes 0.5 at search cost {th.threshold} (analytic bound "
+                 f"{th.analytic_bound}); middleman net {f['costliest_widest_mm_net_pnl']:g} ticks "
+                 f"at the costliest, widest cell",
+            res.rows, [im.COST, im.SPREAD], "intermediated_share")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
 
 
 EXPERIMENTS: Tuple[Callable[[], Spec], ...] = (coase, decision_cost, adverse_selection, fee_wars, funding_arb)
-PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost,)
+PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost, intermediation)
 
 
 def build(include_phase7: bool = False) -> Report:
@@ -146,7 +162,8 @@ def build(include_phase7: bool = False) -> Report:
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
     title = ("frictionlab Phase 5 summary: five friction experiments" if not include_phase7 else
-             "frictionlab Phase 5 summary: five friction experiments plus Phase 7 search cost")
+             "frictionlab Phase 5 summary: five friction experiments plus Phase 7 search "
+             "cost and intermediation")
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -158,7 +175,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--out", type=Path, default=None,
                     help="output directory for phase5_summary.html (default: a fresh temp dir)")
     ap.add_argument("--include-phase7", action="store_true",
-                    help="append the Phase 7 search-cost experiment as a sixth section")
+                    help="append the Phase 7 search-cost and intermediation experiments "
+                         "as sections six and seven")
     a = ap.parse_args(argv)
     rep = build(a.include_phase7)
     for k, v in rep.meta.items():

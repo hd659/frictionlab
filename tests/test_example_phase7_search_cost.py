@@ -125,9 +125,9 @@ def test_summary_without_flag_is_unchanged(summaries):
     assert len(_experiments(summaries[0])) == 5
 
 
-def test_summary_with_flag_has_six_sections(summaries):
-    secs = _experiments(summaries[1])
-    assert len(secs) == 6 and secs[-1].find("h2").text == "search_cost (seed 47)"
+def test_summary_with_flag_has_search_cost_as_sixth_section(summaries):
+    secs = _experiments(summaries[1])          # fl-051 appends intermediation as the seventh
+    assert len(secs) == 7 and secs[5].find("h2").text == "search_cost (seed 47)"
     assert not re.search(rb"https?://", summaries[1], re.I)
 
 

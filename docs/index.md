@@ -76,8 +76,16 @@ byte-reproducible HTML report.
   reservation-price stopping rule in the bilateral search market, why search cost and
   decay push the market in opposite directions, and how the collapse bound relates to
   the Coase threshold. Config: `examples/configs/search_cost_small.json`.
-  Example: `examples/phase7_search_cost.py`. `examples/phase5_summary_report.py
-  --include-phase7` adds it to the summary report as a sixth section.
+  Example: `examples/phase7_search_cost.py`.
+- [Phase 7: intermediation under search costs](phase7-intermediation.md) covers why a
+  middleman earns rent only when it shortens search by more than its spread, how
+  perishable carry caps the inventory it will hold, and how this relates to the search
+  collapse bound and the Coase threshold.
+  Config: `examples/configs/intermediation_small.json`.
+  Example: `examples/phase7_intermediation.py`.
+
+`examples/phase5_summary_report.py --include-phase7` adds both Phase 7 experiments to
+the summary report, as sections six and seven.
 
 ## Conventions used across the write-ups
 
