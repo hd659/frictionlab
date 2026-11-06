@@ -1,0 +1,22 @@
+{
+  "experiment": "intermediation",
+  "master_seed": 50,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "search_costs": [0, 2, 8, 32],
+    "half_spreads": [0, 4, 16],
+    "values": [130, 125, 120, 115, 110, 105],
+    "costs": [40, 45, 50, 55, 60, 65],
+    "meeting_rate": 0.5,
+    "middleman_meeting_rate": 2.0,
+    "capacity": 2,
+    "holding_cost": 1,
+    "decay": 1,
+    "floor": 20,
+    "buyer_weight_bps": 5000,
+    "until": 100.0
+  }
+}

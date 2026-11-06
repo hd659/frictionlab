@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, validate_params
-from . import adverse_selection, coase, decision_cost, fee_wars, funding_arb, search_cost
+from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, intermediation,
+               search_cost)
 from .base import ExperimentResult
 from .two_venue import MarketConfig
 
@@ -127,7 +128,7 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- the five Phase 5 experiments and the Phase 7 search experiment ----------
+# ---- the five Phase 5 experiments and the Phase 7 search experiments ---------
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
     kw = {k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}
@@ -218,3 +219,19 @@ register_experiment(
     small={"search_costs": [0, 10, 30, 52], "decays": [0, 2], "until": 100.0},
     master_seed=47, replicates=2, small_replicates=1,
     doc="search cost x perishability in a bilateral search market")
+
+register_experiment(
+    "intermediation", lambda p, s, r, w: intermediation.run_intermediation(
+        _build(intermediation.Config, p), p["search_costs"], p["half_spreads"], replicates=r,
+        master_seed=s, n_workers=w),
+    {"search_costs": TICKS, "half_spreads": TICKS, "values": INTS, "costs": INTS,
+     "meeting_rate": Param("float", min=1e-9), "middleman_meeting_rate": Param("float", min=1e-9),
+     "capacity": POS, "holding_cost": Param("int", friction=True),
+     "decay": Param("int", friction=True), "floor": POS,
+     "buyer_weight_bps": Param("int", min=0, max=10_000), "until": NONNEG},
+    _pick(intermediation.Config(), "values", "costs", "meeting_rate", "middleman_meeting_rate",
+          "capacity", "holding_cost", "decay", "floor", "buyer_weight_bps", "until",
+          search_costs=[0, 1, 2, 4, 8, 16, 32], half_spreads=[0, 2, 4, 8, 16, 24]),
+    small={"search_costs": [0, 2, 8, 32], "half_spreads": [0, 4, 16], "until": 100.0},
+    master_seed=50, replicates=2, small_replicates=1,
+    doc="middleman half-spread x search cost in a bilateral search market")

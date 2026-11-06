@@ -34,6 +34,12 @@
   search cost paid, decay loss and seller share. `reservation_price` is the
   analytic stopping-rule reservation and `find_search_collapse` bisects for
   the volume-collapse search cost against `search_cost_bound`.
+- `intermediation` (Phase 7): the fl-049 `Middleman` in the fl-046
+  `SearchMarket`, swept over search_cost x middleman_half_spread; intermediated
+  share, volume, time to match, surplus share, middleman PnL split, search cost
+  paid and the surplus change against the no-middleman twin.
+  `middleman_indifference_spread` is the analytic bound and
+  `find_intermediation_threshold` bisects for the intermediation search cost.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -60,6 +66,11 @@ from .funding_arb import (
     analytic_bound as funding_arb_bound, arb_metrics as funding_arb_metrics,
     default_levels as funding_arb_levels, entry_threshold_gas, find_gas_threshold,
     run_funding_arb,
+)
+from .intermediation import (
+    Config as IntermediationConfig, IntermediationCell, IntermediationThreshold,
+    analytic_bound as intermediation_bound, find_intermediation_threshold,
+    intermediation_metrics, middleman_indifference_spread, run_intermediation,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -101,6 +112,10 @@ __all__ = [
     # 7.2 search cost and perishable value
     "SearchCell", "SearchCollapse", "SearchCostConfig", "ShadedPolicy", "find_search_collapse",
     "reservation_price", "run_search_cost", "search_cost_bound", "search_metrics",
+    # 7.3 intermediation
+    "IntermediationCell", "IntermediationConfig", "IntermediationThreshold",
+    "find_intermediation_threshold", "intermediation_bound", "intermediation_metrics",
+    "middleman_indifference_spread", "run_intermediation",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",
