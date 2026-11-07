@@ -5,10 +5,9 @@
     res = run_from_config("examples/configs/coase_small.json")
     res.config                # resolved config, also shown in res.report() header
 
-A runner has signature `runner(params, master_seed, replicates, n_workers)` and
-returns an `ExperimentResult`. Resolution is deterministic: registered defaults,
-then the experiment's `small` overrides (if `small: true`), then user params,
-validated and emitted in schema order.
+A runner `runner(params, master_seed, replicates, n_workers)` returns an
+`ExperimentResult`. Resolution is deterministic: registered defaults, then the
+`small` overrides (if `small: true`), then user params, emitted in schema order.
 """
 from __future__ import annotations
 
@@ -18,8 +17,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, validate_params
-from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, intermediation,
-               search_cost)
+from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, grossman_stiglitz,
+               intermediation, search_cost)
 from .base import ExperimentResult
 from .two_venue import MarketConfig
 
@@ -128,19 +127,17 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- the five Phase 5 experiments and the Phase 7 search experiments ---------
+# ---- Phase 5 experiments, Phase 7 search experiments, Phase 8 costly information
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
-    kw = {k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}
-    return cls(**{**kw, **extra})
+    return cls(**{**{k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}, **extra})
 
 
 def _pick(obj: Any, *keys: str, **extra: Any) -> Dict[str, Any]:
     return {**{k: getattr(obj, k) for k in keys}, **extra}
 
 
-INTS, FLOATS = Param("int", seq=True), Param("float", seq=True)
-TICKS = Param("int", seq=True, friction=True)
+INTS, RATE, TICKS = Param("int", seq=True), Param("float", min=1e-9), Param("int", seq=True, friction=True)
 POS, NONNEG, PROB = Param("int", min=1), Param("float", min=0), Param("float", min=0, max=1)
 
 register_experiment(
@@ -225,7 +222,7 @@ register_experiment(
         _build(intermediation.Config, p), p["search_costs"], p["half_spreads"], replicates=r,
         master_seed=s, n_workers=w),
     {"search_costs": TICKS, "half_spreads": TICKS, "values": INTS, "costs": INTS,
-     "meeting_rate": Param("float", min=1e-9), "middleman_meeting_rate": Param("float", min=1e-9),
+     "meeting_rate": RATE, "middleman_meeting_rate": RATE,
      "capacity": POS, "holding_cost": Param("int", friction=True),
      "decay": Param("int", friction=True), "floor": POS,
      "buyer_weight_bps": Param("int", min=0, max=10_000), "until": NONNEG},
@@ -235,3 +232,19 @@ register_experiment(
     small={"search_costs": [0, 2, 8, 32], "half_spreads": [0, 4, 16], "until": 100.0},
     master_seed=50, replicates=2, small_replicates=1,
     doc="middleman half-spread x search cost in a bilateral search market")
+
+_GS = grossman_stiglitz
+register_experiment(
+    "grossman_stiglitz", lambda p, s, r, w: _GS.run_grossman_stiglitz(
+        _build(_GS.Config, p), p["signal_costs"], p["noise_intensities"], population_costs=p["population_costs"],
+        generations=p["generations"], collapse_floor=p["collapse_floor"], replicates=r, master_seed=s, n_workers=w),
+    {"signal_costs": TICKS, "noise_intensities": Param("float", seq=True, min=0), "center": POS,
+     "jump": POS, "accuracy_bps": Param("int", min=5_000, max=10_000), "n_acquirers": POS,
+     "acquirer_rate": RATE, "n_noise": POS, "noise_buy_prob": PROB, "maker_rate": RATE,
+     "quote_size": POS, "horizon": NONNEG, "population_costs": TICKS, "generations": POS,
+     "collapse_floor": Param("float", min=1e-9, max=1)},
+    _pick(_GS.Config(), *(f.name for f in fields(_GS.Config) if f.name != "cash"),
+          signal_costs=list(_GS.COSTS), noise_intensities=list(_GS.NOISES),
+          population_costs=[0, 4, 9], generations=8, collapse_floor=0.05),
+    small={"signal_costs": [0, 2, 4, 8], "noise_intensities": [1.0, 4.0], "horizon": 40.0},
+    master_seed=53, replicates=2, small_replicates=1, doc="signal cost x noise: who buys costly information")

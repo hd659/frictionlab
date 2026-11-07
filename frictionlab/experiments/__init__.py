@@ -40,6 +40,11 @@
   paid and the surplus change against the no-middleman twin.
   `middleman_indifference_spread` is the analytic bound and
   `find_intermediation_threshold` bisects for the intermediation search cost.
+- `grossman_stiglitz` (Phase 8): a GM dealer, noise traders and fl-052
+  `InfoAcquirer`s swept over signal_cost x noise_intensity; buyer fraction,
+  spread, price efficiency, buyer vs non-buyer PnL and sink revenue.
+  `gs_equilibrium_informed_share` is the analytic share, `gs_population` the
+  replicator and `find_information_collapse` bisects for the collapse cost.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -66,6 +71,11 @@ from .funding_arb import (
     analytic_bound as funding_arb_bound, arb_metrics as funding_arb_metrics,
     default_levels as funding_arb_levels, entry_threshold_gas, find_gas_threshold,
     run_funding_arb,
+)
+from .grossman_stiglitz import (
+    CommittedBuyer, Config as GrossmanStiglitzConfig, GSCell, GSMaker, InformationCollapse,
+    analytic_collapse_cost, find_information_collapse, gs_equilibrium_informed_share, gs_metrics,
+    population as gs_population, run_grossman_stiglitz, run_gs_grid,
 )
 from .intermediation import (
     Config as IntermediationConfig, IntermediationCell, IntermediationThreshold,
@@ -116,6 +126,10 @@ __all__ = [
     "IntermediationCell", "IntermediationConfig", "IntermediationThreshold",
     "find_intermediation_threshold", "intermediation_bound", "intermediation_metrics",
     "middleman_indifference_spread", "run_intermediation",
+    # 8.2 Grossman-Stiglitz costly information
+    "CommittedBuyer", "GSCell", "GSMaker", "GrossmanStiglitzConfig", "InformationCollapse",
+    "analytic_collapse_cost", "find_information_collapse", "gs_equilibrium_informed_share",
+    "gs_metrics", "gs_population", "run_grossman_stiglitz", "run_gs_grid",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",

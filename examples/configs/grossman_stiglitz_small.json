@@ -1,0 +1,25 @@
+{
+  "experiment": "grossman_stiglitz",
+  "master_seed": 53,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "signal_costs": [0, 2, 4, 8],
+    "noise_intensities": [1.0, 4.0],
+    "center": 100,
+    "jump": 10,
+    "accuracy_bps": 9000,
+    "n_acquirers": 8,
+    "acquirer_rate": 1.0,
+    "n_noise": 4,
+    "noise_buy_prob": 0.5,
+    "maker_rate": 4.0,
+    "quote_size": 50,
+    "horizon": 40.0,
+    "population_costs": [0, 4, 9],
+    "generations": 8,
+    "collapse_floor": 0.05
+  }
+}
