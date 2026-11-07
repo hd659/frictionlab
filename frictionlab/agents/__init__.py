@@ -5,8 +5,11 @@ intents that the `Venue` executes and settles. The cross-venue arbitrageur
 adds `Swap` (AMM leg) and `ArbPair` (book leg + AMM leg) intents, executed by
 `core.runner.CrossVenue`. The funding arbitrageur reuses `ArbPair` for its
 delta-neutral perp + spot legs. The `Middleman` posts bid/ask quotes over
-perishable inventory as an optional counterparty of the search venue.
+perishable inventory as an optional counterparty of the search venue. The
+`InfoAcquirer` buys a costly `SignalSource` signal only when its expected edge
+clears signal cost plus decision cost (Grossman-Stiglitz), else trades as noise.
 """
+from ..costs.information import SignalSource
 from .base import (
     COST_SINK_ID, Action, ActionError, Agent, Cancel, MarketView, Submit, Venue,
 )
@@ -18,6 +21,7 @@ from .funding_arb import BasisPosition, BasisQuote, FundingArbitrageur
 from .bounded_rational import MODES, BoundedRationalAgent, Deliberation
 from .fundamental import FundamentalProcess
 from .informed import EdgeQuote, InformedTrader
+from .info_acquirer import InfoAcquirer, InfoChoice
 from .market_maker import ASQuote, AvellanedaStoikovMM
 from .middleman import (
     DECAY_SINK_ID, HOLD_SINK_ID, HeldUnit, Middleman, PerishCost,
@@ -35,6 +39,7 @@ __all__ = [
     "MODES", "BoundedRationalAgent", "Deliberation",
     "FundamentalProcess",
     "EdgeQuote", "InformedTrader",
+    "InfoAcquirer", "InfoChoice", "SignalSource",
     "ASQuote", "AvellanedaStoikovMM",
     "DECAY_SINK_ID", "HOLD_SINK_ID", "HeldUnit", "Middleman",
     "PerishCost",

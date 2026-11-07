@@ -18,6 +18,11 @@ decision costs collected: trading between agents only moves surplus around.
 carried at cost basis, into spread capture (asks received minus the basis of
 units sold), holding cost and decay loss; `net` equals its ledger cash change
 plus the basis of units still held, exactly in ticks.
+
+`info_pnl` (fl-052) splits an agent's PnL under costly information into trading
+gain (fills at the mark net of execution fees), signal cost (paid to the
+`SignalSource` sink) and decision cost: `net = trading_gain - signal_cost -
+decision_cost` equals the agent's equity change at the mark, exactly in ticks.
 """
 from __future__ import annotations
 
@@ -123,6 +128,35 @@ class MiddlemanPnL:
         return {"spread_capture": self.spread_capture, "holding_cost": self.holding_cost,
                 "decay_loss": self.decay_loss, "net": self.net, "bought": self.bought,
                 "sold": self.sold, "held_basis": self.held_basis}
+
+
+@dataclass(frozen=True)
+class InfoPnL:
+    """Costly-information PnL in ticks: `net = trading_gain - signal_cost - decision_cost`."""
+    trading_gain: int = 0     # gross fills at the mark minus execution fees
+    signal_cost: int = 0      # ticks paid for signals
+    decision_cost: int = 0    # deliberation charges
+    signals: int = 0          # signals bought
+    volume: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.trading_gain - self.signal_cost - self.decision_cost
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"trading_gain": self.trading_gain, "signal_cost": self.signal_cost,
+                "decision_cost": self.decision_cost, "net": self.net,
+                "signals": self.signals, "volume": self.volume}
+
+
+def info_pnl(result, source, mark: Mark,
+             agents: Optional[Iterable[int]] = None) -> Dict[int, InfoPnL]:
+    """Per-agent `InfoPnL` of a run against one `SignalSource` (default: every agent)."""
+    out: Dict[int, InfoPnL] = {}
+    for aid, b in pnl_breakdown(result, mark, agents).items():
+        out[aid] = InfoPnL(b.trading - b.fees, source.paid.get(aid, 0), b.decision_costs,
+                           source.purchases.get(aid, 0), b.volume)
+    return out
 
 
 def middleman_pnl(market) -> MiddlemanPnL:
