@@ -1,0 +1,18 @@
+{
+  "experiment": "reputation",
+  "master_seed": 59,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "rating_accuracies": [6000, 8500, 10000],
+    "whitewash_costs": [0, 4, 16, 64],
+    "schedule": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    "n_sellers": 20,
+    "horizon": 6,
+    "premium": 45,
+    "opportunist_bps": 2500,
+    "threshold_accuracy": 8500
+  }
+}

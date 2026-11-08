@@ -1,4 +1,4 @@
-"""fl-050 / fl-053 / fl-056: intermediation, Grossman-Stiglitz and lemons in the fl-036 registry and fl-037 CLI."""
+"""fl-050 / fl-053 / fl-056 / fl-059: intermediation, Grossman-Stiglitz, lemons and reputation in the registry and CLI."""
 import csv
 import json
 from pathlib import Path
@@ -221,3 +221,62 @@ def test_lemons_bad_params_rejected_and_cli_parallel_match(tmp_path, capsys, lm_
     assert [float(r["traded_share"]) for r in rows] == [r["traded_share"] for r in lm_res.rows]
     par = run_from_config({**json.loads(LM_SMALL.read_text()), "n_workers": 2})
     assert par.rows == lm_res.rows
+
+
+# ---- fl-059: reputation -------------------------------------------------------
+RP_SMALL = CONFIGS / "reputation_small.json"
+
+
+@pytest.fixture(scope="module")
+def rp_res():
+    return run_from_config(RP_SMALL)
+
+
+def test_reputation_registered_defaults_validate_against_schema():
+    from frictionlab.config.schema import validate_params
+    from frictionlab.experiments import ReputationConfig
+    exp = get_experiment("reputation")
+    assert "reputation" in list_experiments() and exp.master_seed == 59 and "reputation" in exp.doc
+    assert validate_params(exp.defaults, exp.param_schema) == exp.defaults
+    assert list(exp.defaults) == list(exp.param_schema)
+    base = ReputationConfig()
+    for k in ("n_sellers", "horizon", "premium", "opportunist_bps"):
+        assert exp.defaults[k] == getattr(base, k), k
+    assert tuple(exp.defaults["schedule"]) == base.schedule
+    with pytest.raises(ConfigError) as e:
+        get_experiment("reputaton")
+    assert "reputation" in str(e.value)
+
+
+def test_reputation_shipped_config_equals_small_preset():
+    raw, cfg = load_config(RP_SMALL), resolve_config(RP_SMALL)
+    preset = resolve_config({"experiment": "reputation", "small": True})
+    assert raw["params"] == cfg.params == preset.params and cfg.small and cfg.output is None
+    assert cfg.master_seed == 59 and cfg.replicates == 1
+
+
+def test_reputation_run_from_config_rows_equal_direct_call(rp_res):
+    from frictionlab.experiments import ReputationConfig, run_reputation
+    p = rp_res.config["params"]
+    cfg = ReputationConfig(schedule=tuple(p["schedule"]), n_sellers=p["n_sellers"], horizon=p["horizon"],
+                           premium=p["premium"], opportunist_bps=p["opportunist_bps"])
+    direct = run_reputation(cfg, p["rating_accuracies"], p["whitewash_costs"],
+                            threshold_accuracy=p["threshold_accuracy"], replicates=1, master_seed=59)
+    assert rp_res.rows == direct.rows and rp_res.findings == direct.findings
+    assert rp_res.config == resolve_config(RP_SMALL).to_dict()
+
+
+def test_reputation_bad_params_rejected_and_cli_parallel_match(tmp_path, capsys, rp_res):
+    for bad in ({"rating_accuracies": [10_001]}, {"whitewash_costs": [-1]}, {"horizon": 0},
+                {"opportunist_bps": -5}, {"accuracy": [1]}):
+        with pytest.raises(ConfigError):
+            resolve_config({"experiment": "reputation", "params": bad})
+    assert cli.main(["validate", str(RP_SMALL)]) == 0
+    assert "-> reputation (master_seed=59, replicates=1, small=true)" in capsys.readouterr().out
+    out = tmp_path / "rp"
+    assert cli.main(["run", str(RP_SMALL), "--out", str(out)]) == 0
+    with open(out / "rows.csv", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [int(r["whitewashes"]) for r in rows] == [r["whitewashes"] for r in rp_res.rows]
+    par = run_from_config({**json.loads(RP_SMALL.read_text()), "n_workers": 2})
+    assert par.rows == rp_res.rows

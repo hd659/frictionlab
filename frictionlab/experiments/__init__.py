@@ -50,6 +50,12 @@
   rounds, certification uptake and cutoff, surplus share and certification paid.
   `akerlof_pooled_price` / `certification_cutoff` are the analytic fixed point and
   cutoff, and `find_certification_threshold` bisects for the uptake-collapse cost.
+- `reputation` (Phase 10): the fl-058 `ReputationMarket` swept over
+  rating_accuracy_bps x whitewash_cost; true-quality share, cheating rate and
+  milking round, whitewashes, price-quality gap, surplus share and its gain over
+  the fl-056 pooled lemons twin. `milking_switch_round` /
+  `min_deterrent_whitewash_cost` are the analytic end-game round and re-entry
+  deterrent, and `find_reputation_threshold` bisects for the no-whitewash cost.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -91,6 +97,12 @@ from .lemons import (
     CertificationThreshold, Config as LemonsConfig, LemonsCell, akerlof_pooled_price,
     cell_qualities as lemons_qualities, certification_bound, certification_cutoff,
     find_certification_threshold, lemons_metrics, run_lemons, run_lemons_grid,
+)
+from .reputation import (
+    Config as ReputationConfig, ReputationCell, ReputationThreshold,
+    cell_qualities as reputation_qualities, find_reputation_threshold, milking_switch_round,
+    min_deterrent_whitewash_cost, predicted_milking_round, reputation_metrics, run_reputation,
+    run_reputation_grid,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -144,6 +156,10 @@ __all__ = [
     "CertificationThreshold", "LemonsCell", "LemonsConfig", "akerlof_pooled_price",
     "certification_bound", "certification_cutoff", "find_certification_threshold",
     "lemons_metrics", "lemons_qualities", "run_lemons", "run_lemons_grid",
+    # 10.2 reputation
+    "ReputationCell", "ReputationConfig", "ReputationThreshold", "find_reputation_threshold",
+    "milking_switch_round", "min_deterrent_whitewash_cost", "predicted_milking_round",
+    "reputation_metrics", "reputation_qualities", "run_reputation", "run_reputation_grid",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",
