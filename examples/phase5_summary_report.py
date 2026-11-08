@@ -12,7 +12,12 @@ seven: fl-047 search cost (`examples/configs/search_cost_small.json`) and fl-050
 intermediation (`examples/configs/intermediation_small.json`). Without it the
 five-section report is byte-identical to what it was before Phase 7.
 
-    python examples/phase5_summary_report.py [--out DIR] [--include-phase7]
+`--include-phase8` appends the fl-053 Grossman-Stiglitz experiment
+(`examples/configs/grossman_stiglitz_small.json`) as one more section, after the
+Phase 7 pair when both flags are given. The default and `--include-phase7`
+outputs are unchanged by it.
+
+    python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
 """
 from __future__ import annotations
 
@@ -148,6 +153,19 @@ def intermediation() -> Spec:
             res.rows, [im.COST, im.SPREAD], "intermediated_share")
 
 
+def grossman_stiglitz() -> Spec:
+    from frictionlab.experiments import grossman_stiglitz as gs, run_from_config
+    raw = json.loads((HERE / "configs" / "grossman_stiglitz_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    fp = ", ".join(f"{d['buyer_share']:.2f} vs {d['analytic_share']:.2f} at cost {d['signal_cost']}"
+                   for d in f["population"])
+    return (res, f"buyer fraction {f['cheapest_buyer_fraction']:.2f} -> {f['costliest_buyer_fraction']:.2f} "
+                 f"over signal cost; information collapse at {f['collapse_threshold']} ticks (analytic "
+                 f"{f['collapse_analytic']}); replicator vs analytic informed share {fp}",
+            res.rows, [gs.COST, gs.NOISE], "buyer_fraction")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -155,15 +173,19 @@ def registry_config(cls: type, params: Dict[str, Any]) -> Any:
 
 EXPERIMENTS: Tuple[Callable[[], Spec], ...] = (coase, decision_cost, adverse_selection, fee_wars, funding_arb)
 PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost, intermediation)
+PHASE8: Tuple[Callable[[], Spec], ...] = (grossman_stiglitz,)
 
 
-def build(include_phase7: bool = False) -> Report:
-    specs = [run() for run in EXPERIMENTS + (PHASE7 if include_phase7 else ())]
+def build(include_phase7: bool = False, include_phase8: bool = False) -> Report:
+    runs = EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
+    specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
     title = ("frictionlab Phase 5 summary: five friction experiments" if not include_phase7 else
              "frictionlab Phase 5 summary: five friction experiments plus Phase 7 search "
              "cost and intermediation")
+    if include_phase8:
+        title += " plus Phase 8 Grossman-Stiglitz"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -177,8 +199,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--include-phase7", action="store_true",
                     help="append the Phase 7 search-cost and intermediation experiments "
                          "as sections six and seven")
+    ap.add_argument("--include-phase8", action="store_true",
+                    help="append the Phase 8 Grossman-Stiglitz experiment as one more section")
     a = ap.parse_args(argv)
-    rep = build(a.include_phase7)
+    rep = build(a.include_phase7, a.include_phase8)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))

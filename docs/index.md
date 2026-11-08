@@ -87,6 +87,19 @@ byte-reproducible HTML report.
 `examples/phase5_summary_report.py --include-phase7` adds both Phase 7 experiments to
 the summary report, as sections six and seven.
 
+## Phase 8: costly information
+
+- [Phase 8: the Grossman-Stiglitz paradox](phase8-grossman-stiglitz.md) covers why
+  perfectly efficient prices cannot be an equilibrium when information is costly, how
+  noise trading pays for information production, how the Glosten-Milgrom spread closes
+  the loop, and how the information collapse relates to the Coase threshold and the
+  search collapse bound.
+  Config: `examples/configs/grossman_stiglitz_small.json`.
+  Example: `examples/phase8_grossman_stiglitz.py`.
+
+`examples/phase5_summary_report.py --include-phase8` adds the Grossman-Stiglitz
+experiment to the summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
