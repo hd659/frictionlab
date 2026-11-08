@@ -22,8 +22,12 @@ outputs are unchanged by it.
 Phase 8 sections. The default, `--include-phase7` and `--include-phase8` outputs are
 unchanged by it.
 
+`--include-phase10` appends the fl-059 reputation experiment
+(`examples/configs/reputation_small.json`) as one more section, after every earlier
+optional section. The default and `--include-phase7/8/9` outputs are unchanged by it.
+
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
-                                             [--include-phase9]
+                                             [--include-phase9] [--include-phase10]
 """
 from __future__ import annotations
 
@@ -184,6 +188,18 @@ def lemons() -> Spec:
             res.rows, [lm.COST, lm.PREMIUM], "surplus_share")
 
 
+def reputation() -> Spec:
+    from frictionlab.experiments import reputation as rp, run_from_config
+    raw = json.loads((HERE / "configs" / "reputation_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    return (res, f"cheating rate {f['lowest_accuracy_cheating_rate']:.2f} -> "
+                 f"{f['highest_accuracy_cheating_rate']:.2f} over rating accuracy; whitewashing stops at "
+                 f"{f['whitewash_threshold']} ticks (deterrent bound {f['deterrent_bound']}) at accuracy "
+                 f"{f['threshold_accuracy']} bps; {f['total_whitewash_paid']} ticks paid to whitewash",
+            res.rows, [rp.ACC, rp.WASH], "surplus_share")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -193,12 +209,13 @@ EXPERIMENTS: Tuple[Callable[[], Spec], ...] = (coase, decision_cost, adverse_sel
 PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost, intermediation)
 PHASE8: Tuple[Callable[[], Spec], ...] = (grossman_stiglitz,)
 PHASE9: Tuple[Callable[[], Spec], ...] = (lemons,)
+PHASE10: Tuple[Callable[[], Spec], ...] = (reputation,)
 
 
 def build(include_phase7: bool = False, include_phase8: bool = False,
-          include_phase9: bool = False) -> Report:
+          include_phase9: bool = False, include_phase10: bool = False) -> Report:
     runs = (EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
-            + (PHASE9 if include_phase9 else ()))
+            + (PHASE9 if include_phase9 else ()) + (PHASE10 if include_phase10 else ()))
     specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
@@ -209,6 +226,8 @@ def build(include_phase7: bool = False, include_phase8: bool = False,
         title += " plus Phase 8 Grossman-Stiglitz"
     if include_phase9:
         title += " plus Phase 9 lemons"
+    if include_phase10:
+        title += " plus Phase 10 reputation"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -226,8 +245,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="append the Phase 8 Grossman-Stiglitz experiment as one more section")
     ap.add_argument("--include-phase9", action="store_true",
                     help="append the Phase 9 lemons and certification experiment as one more section")
+    ap.add_argument("--include-phase10", action="store_true",
+                    help="append the Phase 10 reputation experiment as one more section")
     a = ap.parse_args(argv)
-    rep = build(a.include_phase7, a.include_phase8, a.include_phase9)
+    rep = build(a.include_phase7, a.include_phase8, a.include_phase9, a.include_phase10)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))

@@ -112,6 +112,18 @@ experiment to the summary report as one more section.
 `examples/phase5_summary_report.py --include-phase9` adds the lemons experiment to the
 summary report as one more section.
 
+## Phase 10: reputation
+
+- [Phase 10: reputation, end-game milking and cheap identities](phase10-reputation.md)
+  covers why a finite horizon produces end-game milking, why cheap identities let
+  opportunists escape their score, and how the deterrent whitewash cost plays the role
+  of the certification bound.
+  Config: `examples/configs/reputation_small.json`.
+  Example: `examples/phase10_reputation.py`.
+
+`examples/phase5_summary_report.py --include-phase10` adds the reputation experiment to
+the summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
