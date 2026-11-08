@@ -8,6 +8,9 @@ delta-neutral perp + spot legs. The `Middleman` posts bid/ask quotes over
 perishable inventory as an optional counterparty of the search venue. The
 `InfoAcquirer` buys a costly `SignalSource` signal only when its expected edge
 clears signal cost plus decision cost (Grossman-Stiglitz), else trades as noise.
+The `ReputationSeller` (fl-058) carries a hidden quality and type into the
+repeated `ReputationMarket`: opportunists milk at a deterministic end-game round
+and any seller whitewashes only when a fresh id net of its cost pays more.
 """
 from ..costs.information import SignalSource
 from .base import (
@@ -26,6 +29,7 @@ from .market_maker import ASQuote, AvellanedaStoikovMM
 from .middleman import (
     DECAY_SINK_ID, HOLD_SINK_ID, HeldUnit, Middleman, PerishCost,
 )
+from .reputation_seller import ReputationSeller, switch_round
 from .noise import NoiseTrader, make_noise_population, order_flow
 from .zero_intelligence import ZICTrader, ZITrader, ZIUTrader, make_zi_population
 
@@ -44,5 +48,6 @@ __all__ = [
     "DECAY_SINK_ID", "HOLD_SINK_ID", "HeldUnit", "Middleman",
     "PerishCost",
     "NoiseTrader", "make_noise_population", "order_flow",
+    "ReputationSeller", "switch_round",
     "ZICTrader", "ZITrader", "ZIUTrader", "make_zi_population",
 ]

@@ -27,6 +27,11 @@ decision_cost` equals the agent's equity change at the mark, exactly in ticks.
 `lemons_pnl` (fl-055) splits a `LemonsMarket` seller's PnL, the unit valued at
 its own quality q, into trade surplus (price - q if sold) and certification cost:
 `net = trade_surplus - certification_cost` equals cash + (position - 1) * q.
+
+`reputation_pnl` (fl-058) splits a `ReputationMarket` seller's PnL into trade
+surplus (price - q per sale, as if q were delivered), cheating gain (q - delivered)
+and whitewash cost: `net = trade_surplus + cheating_gain - whitewash_cost` equals
+its ledger cash minus the production cost of what it delivered, exactly in ticks.
 """
 from __future__ import annotations
 
@@ -191,6 +196,40 @@ def lemons_pnl(market) -> Dict[int, LemonsPnL]:
         p = out[sid]
         out[sid] = LemonsPnL(p.trade_surplus, p.certification_cost + fee, p.sold, p.certified + 1)
     return out
+
+
+@dataclass(frozen=True)
+class ReputationPnL:
+    """Reputation seller PnL in ticks: `net = trade_surplus + cheating_gain - whitewash_cost`."""
+    trade_surplus: int = 0     # sum(price - q) over sales
+    cheating_gain: int = 0     # sum(q - delivered) over sales
+    whitewash_cost: int = 0    # ticks paid to the identity sink
+    sold: int = 0
+    cheats: int = 0
+    whitewashes: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.trade_surplus + self.cheating_gain - self.whitewash_cost
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"trade_surplus": self.trade_surplus, "cheating_gain": self.cheating_gain,
+                "whitewash_cost": self.whitewash_cost, "net": self.net, "sold": self.sold,
+                "cheats": self.cheats, "whitewashes": self.whitewashes}
+
+
+def reputation_pnl(market) -> Dict[int, ReputationPnL]:
+    """Per-seller `ReputationPnL` of a fl-058 `ReputationMarket` run."""
+    acc = {sid: [0, 0, 0, 0] for sid in market.sellers}
+    for t in market.trades:
+        q, out = market.sellers[t.seller_id].quality, market.delivered[t.trade_id]
+        row = acc[t.seller_id]
+        row[0] += (t.price - q) * t.qty
+        row[1] += (q - out) * t.qty
+        row[2] += t.qty
+        row[3] += int(out < q)
+    return {sid: ReputationPnL(r[0], r[1], market.wash_paid[sid], r[2], r[3],
+                               market.sellers[sid].whitewashes) for sid, r in acc.items()}
 
 
 def middleman_pnl(market) -> MiddlemanPnL:

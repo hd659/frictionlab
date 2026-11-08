@@ -26,6 +26,9 @@
 - `LemonsMarket` (fl-055): Akerlof hidden-quality market; a uniform pooled price
   is the buyer value of the mean offered quality, iterated to a fixed point, with
   an optional `CertificationPolicy` segment clearing certified units at q + premium.
+- `ReputationMarket` (fl-058): repeated hidden-quality market; buyers price a
+  seller's integer (good, bad) rating score at the buyer value of its integer
+  posterior expected quality; opportunists milk, whitewashing pays an identity sink.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -41,6 +44,9 @@ from .fee_tiers import SINK_POLICIES, FeeComponent, FeeTier, FeeTierSchedule, se
 from .router import RouteLeg, RoutePlan, RouteVenue, VenueRouter, quote_leg
 from .search_market import SEARCH_SINK_ID, Meeting, ReservationPolicy, SearchAgent, SearchMarket
 from .lemons import CERTIFIED, POOLED, LemonsMarket, LemonsRound, pooled_price
+from .reputation import (
+    IDENTITY_SINK_ID, REPUTATION, ReputationMarket, ReputationRound, score_quality,
+)
 
 __all__ = [
     # constants
@@ -61,4 +67,6 @@ __all__ = [
     "Meeting", "ReservationPolicy", "SearchAgent", "SearchMarket",
     # quality uncertainty
     "CERTIFIED", "POOLED", "LemonsMarket", "LemonsRound", "pooled_price",
+    # reputation
+    "IDENTITY_SINK_ID", "REPUTATION", "ReputationMarket", "ReputationRound", "score_quality",
 ]
