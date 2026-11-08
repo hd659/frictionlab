@@ -23,6 +23,9 @@
   seeded Poisson meetings charge a per-search cost to a search-cost sink, pairs
   trade at an integer Nash split when reservations cross, unsold seller value
   may perish by a fixed tick decay down to a floor.
+- `LemonsMarket` (fl-055): Akerlof hidden-quality market; a uniform pooled price
+  is the buyer value of the mean offered quality, iterated to a fixed point, with
+  an optional `CertificationPolicy` segment clearing certified units at q + premium.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -37,6 +40,7 @@ from .batch_auction import (
 from .fee_tiers import SINK_POLICIES, FeeComponent, FeeTier, FeeTierSchedule, settle_tiered
 from .router import RouteLeg, RoutePlan, RouteVenue, VenueRouter, quote_leg
 from .search_market import SEARCH_SINK_ID, Meeting, ReservationPolicy, SearchAgent, SearchMarket
+from .lemons import CERTIFIED, POOLED, LemonsMarket, LemonsRound, pooled_price
 
 __all__ = [
     # constants
@@ -55,4 +59,6 @@ __all__ = [
     "RouteLeg", "RoutePlan", "RouteVenue", "VenueRouter", "quote_leg",
     # search
     "Meeting", "ReservationPolicy", "SearchAgent", "SearchMarket",
+    # quality uncertainty
+    "CERTIFIED", "POOLED", "LemonsMarket", "LemonsRound", "pooled_price",
 ]

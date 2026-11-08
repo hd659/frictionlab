@@ -10,6 +10,9 @@ Time-varying gas: `GasProcess(calm, shock, p_shock, p_calm, seed=s).cost()` is a
 
 Costly information (fl-052): `SignalSource(fundamental, accuracy_bps, price=k)` sells
 noisy two-point state signals for an integer-tick price routed to `INFO_SINK_ID`.
+
+Quality certification (fl-055): `CertificationPolicy(cost)` reveals a unit's hidden
+quality for an integer-tick cost routed to `CERT_SINK_ID`.
 """
 from .base import BOTH, TAKER_ONLY, CostModel, Fill, Role, fills_of, to_frac, venue_round
 from .fees import BPS, FixedCost, HalfSpreadCost, LatencyCost, MakerTakerFee
@@ -18,6 +21,7 @@ from .stack import FrictionStack, zero_friction
 from .information import (
     BPS_ONE, HIGH, INFO_SINK_ID, LOW, SignalSource, breakeven_accuracy, expected_edge, two_point,
 )
+from .certification import CERT_SINK_ID, CertificationPolicy
 
 __all__ = [
     "BOTH", "BPS", "TAKER_ONLY",
@@ -27,4 +31,5 @@ __all__ = [
     "FrictionStack", "zero_friction",
     "BPS_ONE", "HIGH", "INFO_SINK_ID", "LOW", "SignalSource", "breakeven_accuracy",
     "expected_edge", "two_point",
+    "CERT_SINK_ID", "CertificationPolicy",
 ]

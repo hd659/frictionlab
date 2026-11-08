@@ -35,7 +35,8 @@ from .metrics import (
 )
 from .plots import bar_chart, heatmap, line_chart, multi_line_chart
 from .pnl import (
-    InfoPnL, MiddlemanPnL, PnLBreakdown, breakdown_by, info_pnl, middleman_pnl, pnl_breakdown, total,
+    InfoPnL, LemonsPnL, MiddlemanPnL, PnLBreakdown, breakdown_by, info_pnl, lemons_pnl,
+    middleman_pnl, pnl_breakdown, total,
 )
 from .report import Report, frictionlab_version, write_report
 from .report_sections import (
@@ -60,7 +61,7 @@ from .welfare import (
 )
 
 __all__ = [
-    "InfoPnL", "info_pnl",
+    "InfoPnL", "info_pnl", "LemonsPnL", "lemons_pnl",
     "MiddlemanPnL", "PnLBreakdown", "breakdown_by", "middleman_pnl", "pnl_breakdown", "total",
     "QuoteRecorder", "SpreadStats", "markout_pnl", "pnl_by_agent", "pnl_by_type",
     "spread_stats", "volume_between",

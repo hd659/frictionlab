@@ -23,6 +23,10 @@ plus the basis of units still held, exactly in ticks.
 gain (fills at the mark net of execution fees), signal cost (paid to the
 `SignalSource` sink) and decision cost: `net = trading_gain - signal_cost -
 decision_cost` equals the agent's equity change at the mark, exactly in ticks.
+
+`lemons_pnl` (fl-055) splits a `LemonsMarket` seller's PnL, the unit valued at
+its own quality q, into trade surplus (price - q if sold) and certification cost:
+`net = trade_surplus - certification_cost` equals cash + (position - 1) * q.
 """
 from __future__ import annotations
 
@@ -156,6 +160,36 @@ def info_pnl(result, source, mark: Mark,
     for aid, b in pnl_breakdown(result, mark, agents).items():
         out[aid] = InfoPnL(b.trading - b.fees, source.paid.get(aid, 0), b.decision_costs,
                            source.purchases.get(aid, 0), b.volume)
+    return out
+
+
+@dataclass(frozen=True)
+class LemonsPnL:
+    """Lemons seller PnL in ticks: `net = trade_surplus - certification_cost`."""
+    trade_surplus: int = 0        # price - quality over units sold
+    certification_cost: int = 0   # ticks paid to the certification sink
+    sold: int = 0
+    certified: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.trade_surplus - self.certification_cost
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"trade_surplus": self.trade_surplus,
+                "certification_cost": self.certification_cost, "net": self.net,
+                "sold": self.sold, "certified": self.certified}
+
+
+def lemons_pnl(market) -> Dict[int, LemonsPnL]:
+    """Per-seller `LemonsPnL` of a fl-055 `LemonsMarket` run."""
+    out = {sid: LemonsPnL() for sid in market.qualities}
+    for t in market.trades:
+        q, p = market.qualities[t.seller_id], out[t.seller_id]
+        out[t.seller_id] = LemonsPnL(p.trade_surplus + (t.price - q) * t.qty, 0, p.sold + t.qty)
+    for sid, fee in market.cert_paid.items():
+        p = out[sid]
+        out[sid] = LemonsPnL(p.trade_surplus, p.certification_cost + fee, p.sold, p.certified + 1)
     return out
 
 
