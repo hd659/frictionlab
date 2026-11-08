@@ -100,6 +100,18 @@ the summary report, as sections six and seven.
 `examples/phase5_summary_report.py --include-phase8` adds the Grossman-Stiglitz
 experiment to the summary report as one more section.
 
+## Phase 9: quality uncertainty
+
+- [Phase 9: lemons, unraveling and certification](phase9-lemons.md) covers why hidden
+  quality unravels a pooled market from the top, how priced certification creates a
+  separating cutoff whose cost is pure deadweight friction, and how the certification
+  bound relates to the information collapse and the Coase threshold.
+  Config: `examples/configs/lemons_small.json`.
+  Example: `examples/phase9_lemons.py`.
+
+`examples/phase5_summary_report.py --include-phase9` adds the lemons experiment to the
+summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.

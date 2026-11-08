@@ -17,7 +17,13 @@ five-section report is byte-identical to what it was before Phase 7.
 Phase 7 pair when both flags are given. The default and `--include-phase7`
 outputs are unchanged by it.
 
+`--include-phase9` appends the fl-056 lemons experiment
+(`examples/configs/lemons_small.json`) as one more section, after any Phase 7 and
+Phase 8 sections. The default, `--include-phase7` and `--include-phase8` outputs are
+unchanged by it.
+
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
+                                             [--include-phase9]
 """
 from __future__ import annotations
 
@@ -166,6 +172,18 @@ def grossman_stiglitz() -> Spec:
             res.rows, [gs.COST, gs.NOISE], "buyer_fraction")
 
 
+def lemons() -> Spec:
+    from frictionlab.experiments import lemons as lm, run_from_config
+    raw = json.loads((HERE / "configs" / "lemons_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    ak = ", ".join(f"{p} at premium {b}" for b, p in sorted(f["akerlof_pooled_price"].items()))
+    return (res, f"Akerlof pooled price {ak}; certification stops at {f['certification_threshold']} "
+                 f"ticks (analytic bound {f['certification_bound']}) at premium "
+                 f"{f['threshold_premium']}; {f['total_certification_paid']} ticks paid to certify",
+            res.rows, [lm.COST, lm.PREMIUM], "surplus_share")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -174,10 +192,13 @@ def registry_config(cls: type, params: Dict[str, Any]) -> Any:
 EXPERIMENTS: Tuple[Callable[[], Spec], ...] = (coase, decision_cost, adverse_selection, fee_wars, funding_arb)
 PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost, intermediation)
 PHASE8: Tuple[Callable[[], Spec], ...] = (grossman_stiglitz,)
+PHASE9: Tuple[Callable[[], Spec], ...] = (lemons,)
 
 
-def build(include_phase7: bool = False, include_phase8: bool = False) -> Report:
-    runs = EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
+def build(include_phase7: bool = False, include_phase8: bool = False,
+          include_phase9: bool = False) -> Report:
+    runs = (EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
+            + (PHASE9 if include_phase9 else ()))
     specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
@@ -186,6 +207,8 @@ def build(include_phase7: bool = False, include_phase8: bool = False) -> Report:
              "cost and intermediation")
     if include_phase8:
         title += " plus Phase 8 Grossman-Stiglitz"
+    if include_phase9:
+        title += " plus Phase 9 lemons"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -201,8 +224,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                          "as sections six and seven")
     ap.add_argument("--include-phase8", action="store_true",
                     help="append the Phase 8 Grossman-Stiglitz experiment as one more section")
+    ap.add_argument("--include-phase9", action="store_true",
+                    help="append the Phase 9 lemons and certification experiment as one more section")
     a = ap.parse_args(argv)
-    rep = build(a.include_phase7, a.include_phase8)
+    rep = build(a.include_phase7, a.include_phase8, a.include_phase9)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))
