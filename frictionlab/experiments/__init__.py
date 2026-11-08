@@ -56,6 +56,13 @@
   the fl-056 pooled lemons twin. `milking_switch_round` /
   `min_deterrent_whitewash_cost` are the analytic end-game round and re-entry
   deterrent, and `find_reputation_threshold` bisects for the no-whitewash cost.
+- `switching_cost` (Phase 11): the fl-061 `SwitchingMarket` with two `LockinSeller`s
+  swept over mean_switching_cost x target_share; acquisition vs harvest prices and
+  markups, churn, final shares, switching cost paid, consumer surplus, seller
+  profit and the welfare change against the zero-cost Bertrand twin.
+  `klemperer_harvest_markup` / `acquisition_discount` are the analytic lock-in
+  markup and round-0 investment, and `find_lockin_threshold` bisects for the
+  smallest mean switching cost whose harvest markup exceeds a tick floor.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -103,6 +110,11 @@ from .reputation import (
     cell_qualities as reputation_qualities, find_reputation_threshold, milking_switch_round,
     min_deterrent_whitewash_cost, predicted_milking_round, reputation_metrics, run_reputation,
     run_reputation_grid,
+)
+from .switching_cost import (
+    Config as SwitchingCostConfig, LockinThreshold, SwitchingCell, acquisition_discount,
+    analytic_lockin_threshold, find_lockin_threshold, klemperer_harvest_markup,
+    run_switching_cost, run_switching_grid, switching_metrics,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -160,6 +172,10 @@ __all__ = [
     "ReputationCell", "ReputationConfig", "ReputationThreshold", "find_reputation_threshold",
     "milking_switch_round", "min_deterrent_whitewash_cost", "predicted_milking_round",
     "reputation_metrics", "reputation_qualities", "run_reputation", "run_reputation_grid",
+    # 11.2 switching costs and lock-in
+    "LockinThreshold", "SwitchingCell", "SwitchingCostConfig", "acquisition_discount",
+    "analytic_lockin_threshold", "find_lockin_threshold", "klemperer_harvest_markup",
+    "run_switching_cost", "run_switching_grid", "switching_metrics",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",

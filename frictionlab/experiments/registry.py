@@ -1,11 +1,8 @@
 """Experiment registry: name -> (runner, param schema, defaults), driven by configs.
 
-    res = run_from_config("examples/configs/coase_small.json")   # see list_experiments()
-    res.config                # resolved config, also shown in res.report() header
-
-A runner `runner(params, master_seed, replicates, n_workers)` returns an
-`ExperimentResult`. Resolution is deterministic: registered defaults, then the
-`small` overrides (if `small: true`), then user params, emitted in schema order.
+`run_from_config("examples/configs/coase_small.json")` resolves and runs one config; a
+runner `runner(params, master_seed, replicates, n_workers)` returns an `ExperimentResult`.
+Resolution order: registered defaults, `small` overrides (if `small: true`), user params.
 """
 from __future__ import annotations
 
@@ -16,7 +13,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, validate_params
 from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, grossman_stiglitz,
-               intermediation, lemons, reputation, search_cost)
+               intermediation, lemons, reputation, search_cost, switching_cost)
 from .base import ExperimentResult
 from .two_venue import MarketConfig
 
@@ -122,7 +119,7 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- Phase 5 experiments; Phase 7 search; Phase 8 information; Phase 9 lemons; Phase 10 reputation
+# ---- Phase 5 experiments; Phase 7 search; Phase 8 information; Phase 9-11
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
     return cls(**{**{k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}, **extra})
@@ -134,7 +131,6 @@ def _pick(obj: Any, *keys: str, **extra: Any) -> Dict[str, Any]:
 INTS, RATE, TICKS = Param("int", seq=True), Param("float", min=1e-9), Param("int", seq=True, friction=True)
 POS, NONNEG, PROB = Param("int", min=1), Param("float", min=0), Param("float", min=0, max=1)
 BPS, FRIC, SCHED = Param("int", min=0, max=10_000), Param("int", friction=True), Param("int", seq=True, min=1)
-
 register_experiment(
     "coase", lambda p, s, r, w: coase.run_coase(_build(coase.Config, p), p["levels"], replicates=r, master_seed=s, n_workers=w),
     {"values": INTS, "costs": INTS, "levels": Param("int", seq=True, friction=True, nullable=True,
@@ -143,7 +139,6 @@ register_experiment(
     _pick(coase.Config(), "values", "costs", "taker_share", "max_wakeups", levels=None),
     small={"values": [150, 140, 130, 120], "costs": [70, 80, 90, 100], "max_wakeups": 1_500},
     master_seed=28, replicates=4, small_replicates=3, doc="Coase threshold: volume vs total friction")
-
 register_experiment(
     "decision_cost", lambda p, s, r, w: decision_cost.run_decision_cost(
         _build(decision_cost.Config, p), p["costs"], p["aspirations"], replicates=r, master_seed=s, n_workers=w),
@@ -153,7 +148,6 @@ register_experiment(
           costs=[0, 1, 2, 4, 8], aspirations=[100.0, 500.0, 2000.0]),
     small={"max_steps": 20, "horizon": 60.0, "costs": [0, 4, 16], "aspirations": [100.0, 500.0]},
     master_seed=29, replicates=4, small_replicates=2, doc="satisficer vs optimizer under step cost")
-
 register_experiment(
     "adverse_selection", lambda p, s, r, w: adverse_selection.run_grid(
         _build(adverse_selection.Config, p), p["shares"], p["jumps"], replicates=r, master_seed=s, n_workers=w),
@@ -163,7 +157,6 @@ register_experiment(
           shares=list(adverse_selection.SHARES), jumps=list(adverse_selection.JUMPS)),
     small={"shares": [0.0, 0.25, 0.5], "jumps": [2, 8]},
     master_seed=30, replicates=3, small_replicates=2, doc="informed share x jump vs GM spread")
-
 _FW = fee_wars.Config()
 register_experiment(
     "fee_wars", lambda p, s, r, w: fee_wars.run_fee_wars(
@@ -176,7 +169,6 @@ register_experiment(
           start_B=list(_FW.start[1]), steps=_FW.market.steps, epoch=_FW.market.epoch),
     small={"steps": 120, "epoch": 20, "makers": [-2, -1, 0], "takers": [1, 2, 3, 4], "max_rounds": 6},
     master_seed=32, replicates=_FW.replicates, small_replicates=1, doc="two-venue Bertrand fee undercutting")
-
 register_experiment(
     "funding_arb", lambda p, s, r, w: funding_arb.run_funding_arb(
         _build(funding_arb.Config, p), p["levels"], p["probs"], replicates=r, master_seed=s, n_workers=w),
@@ -186,7 +178,6 @@ register_experiment(
     _pick(funding_arb.Config(), "calm_gas", "p_calm", "decision_cost", "taker_bps", "lp_fee_bps",
           "horizon", "until", levels=None, probs=[0.0, 0.1, 0.3, 0.6]),
     small={"probs": [0.0, 0.3, 0.6]}, master_seed=34, doc="funding-rate arbitrage under gas shocks")
-
 register_experiment(
     "search_cost", lambda p, s, r, w: search_cost.run_search_cost(
         _build(search_cost.Config, p), p["search_costs"], p["decays"], replicates=r, master_seed=s, n_workers=w),
@@ -196,7 +187,6 @@ register_experiment(
           "until", search_costs=[0, 5, 10, 20, 30, 40, 52], decays=[0, 1, 2, 4]),
     small={"search_costs": [0, 10, 30, 52], "decays": [0, 2], "until": 100.0},
     master_seed=47, replicates=2, small_replicates=1, doc="search cost x perishability in a bilateral search market")
-
 register_experiment(
     "intermediation", lambda p, s, r, w: intermediation.run_intermediation(
         _build(intermediation.Config, p), p["search_costs"], p["half_spreads"], replicates=r, master_seed=s,
@@ -209,7 +199,6 @@ register_experiment(
           search_costs=[0, 1, 2, 4, 8, 16, 32], half_spreads=[0, 2, 4, 8, 16, 24]),
     small={"search_costs": [0, 2, 8, 32], "half_spreads": [0, 4, 16], "until": 100.0},
     master_seed=50, replicates=2, small_replicates=1, doc="middleman half-spread x search cost in a search market")
-
 _GS = grossman_stiglitz
 register_experiment(
     "grossman_stiglitz", lambda p, s, r, w: _GS.run_grossman_stiglitz(
@@ -225,7 +214,6 @@ register_experiment(
           population_costs=[0, 4, 9], generations=8, collapse_floor=0.05),
     small={"signal_costs": [0, 2, 4, 8], "noise_intensities": [1.0, 4.0], "horizon": 40.0},
     master_seed=53, replicates=2, small_replicates=1, doc="signal cost x noise: who buys costly information")
-
 _LM, LM_POS = lemons.Config(), {"threshold_premium": 20, "uptake_fraction": 0.05}
 register_experiment(
     "lemons", lambda p, s, r, w: lemons.run_lemons(_build(lemons.Config, p), p["certification_costs"],
@@ -237,7 +225,6 @@ register_experiment(
           certification_costs=list(lemons.COSTS), buyer_premiums=list(lemons.PREMIUMS)),
     small={"certification_costs": [0, 4, 16, 32], "buyer_premiums": [0, 10, 40], "n_sellers": 20},
     master_seed=56, doc="certification cost x buyer premium in an Akerlof lemons market")
-
 _RP, RP_SMALL = reputation.Config(), {"rating_accuracies": [6000, 8500, 10000], "whitewash_costs": [0, 4, 16, 64], "n_sellers": 20, "horizon": 6}
 register_experiment(
     "reputation", lambda p, s, r, w: reputation.run_reputation(
@@ -248,3 +235,15 @@ register_experiment(
     _pick(_RP, "n_sellers", "horizon", "premium", "opportunist_bps", schedule=list(_RP.schedule), threshold_accuracy=8500,
           rating_accuracies=list(reputation.ACCURACIES), whitewash_costs=list(reputation.WASH_COSTS)),
     small=RP_SMALL, master_seed=59, doc="rating accuracy x whitewash cost: reputation vs cheap pseudonyms")
+_SC = switching_cost.Config()
+register_experiment(
+    "switching_cost", lambda p, s, r, w: switching_cost.run_switching_cost(
+        _build(_SC.__class__, p), p["mean_switching_costs"], p["target_shares"], replicates=r, master_seed=s,
+        n_workers=w, **{k: p[k] for k in ("threshold_target", "min_markup")}),
+    {"mean_switching_costs": TICKS, "target_shares": Param("int", seq=True, min=5_001, max=10_000), "valuations": SCHED,
+     "n_consumers": POS, "horizon": POS, "marginal_cost": POS, "spread": FRIC,
+     "threshold_target": Param("int", min=5_001, max=10_000), "min_markup": FRIC},
+    _pick(_SC, "n_consumers", "horizon", "marginal_cost", "spread", valuations=list(_SC.valuations), threshold_target=6000,
+          min_markup=4, mean_switching_costs=list(switching_cost.COSTS), target_shares=list(switching_cost.TARGETS)),
+    small={"mean_switching_costs": [0, 4, 16, 32], "target_shares": [6000, 9000], "n_consumers": 16, "horizon": 6},
+    master_seed=62, doc="mean switching cost x target share: Klemperer lock-in and harvest markup")

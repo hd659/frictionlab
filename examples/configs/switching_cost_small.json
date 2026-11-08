@@ -1,0 +1,19 @@
+{
+  "experiment": "switching_cost",
+  "master_seed": 62,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "mean_switching_costs": [0, 4, 16, 32],
+    "target_shares": [6000, 9000],
+    "valuations": [20, 70, 80, 90, 100, 110, 120, 130],
+    "n_consumers": 16,
+    "horizon": 6,
+    "marginal_cost": 40,
+    "spread": 2,
+    "threshold_target": 6000,
+    "min_markup": 4
+  }
+}

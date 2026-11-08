@@ -1,4 +1,5 @@
-"""fl-050 / fl-053 / fl-056 / fl-059: intermediation, Grossman-Stiglitz, lemons and reputation in the registry and CLI."""
+"""fl-050 / fl-053 / fl-056 / fl-059 / fl-062: intermediation, Grossman-Stiglitz, lemons, reputation and
+switching costs in the registry and CLI."""
 import csv
 import json
 from pathlib import Path
@@ -280,3 +281,64 @@ def test_reputation_bad_params_rejected_and_cli_parallel_match(tmp_path, capsys,
     assert [int(r["whitewashes"]) for r in rows] == [r["whitewashes"] for r in rp_res.rows]
     par = run_from_config({**json.loads(RP_SMALL.read_text()), "n_workers": 2})
     assert par.rows == rp_res.rows
+
+
+# ---- fl-062: switching costs ---------------------------------------------------
+SC_SMALL = CONFIGS / "switching_cost_small.json"
+
+
+@pytest.fixture(scope="module")
+def sc_res():
+    return run_from_config(SC_SMALL)
+
+
+def test_switching_cost_registered_defaults_validate_against_schema():
+    from frictionlab.config.schema import validate_params
+    from frictionlab.experiments import SwitchingCostConfig
+    exp = get_experiment("switching_cost")
+    assert "switching_cost" in list_experiments() and exp.master_seed == 62 and "lock-in" in exp.doc
+    assert validate_params(exp.defaults, exp.param_schema) == exp.defaults
+    assert list(exp.defaults) == list(exp.param_schema)
+    base = SwitchingCostConfig()
+    for k in ("n_consumers", "horizon", "marginal_cost", "spread"):
+        assert exp.defaults[k] == getattr(base, k), k
+    assert tuple(exp.defaults["valuations"]) == base.valuations
+    with pytest.raises(ConfigError) as e:
+        get_experiment("switching_cots")
+    assert "switching_cost" in str(e.value)
+
+
+def test_switching_cost_shipped_config_equals_small_preset():
+    raw, cfg = load_config(SC_SMALL), resolve_config(SC_SMALL)
+    preset = resolve_config({"experiment": "switching_cost", "small": True})
+    assert raw["params"] == cfg.params == preset.params and cfg.small and cfg.output is None
+    assert cfg.master_seed == 62 and cfg.replicates == 1
+
+
+def test_switching_cost_run_from_config_rows_equal_direct_call(sc_res):
+    from frictionlab.experiments import SwitchingCostConfig, run_switching_cost
+    p = sc_res.config["params"]
+    cfg = SwitchingCostConfig(valuations=tuple(p["valuations"]), n_consumers=p["n_consumers"],
+                              horizon=p["horizon"], marginal_cost=p["marginal_cost"], spread=p["spread"])
+    direct = run_switching_cost(cfg, p["mean_switching_costs"], p["target_shares"],
+                                threshold_target=p["threshold_target"], min_markup=p["min_markup"],
+                                replicates=1, master_seed=62)
+    assert sc_res.rows == direct.rows and sc_res.findings == direct.findings
+    assert sc_res.config == resolve_config(SC_SMALL).to_dict()
+    assert sc_res.findings["lockin_threshold"] == sc_res.findings["analytic_lockin_threshold"]
+
+
+def test_switching_cost_bad_params_rejected_and_cli_parallel_match(tmp_path, capsys, sc_res):
+    for bad in ({"mean_switching_costs": [-1]}, {"target_shares": [5000]}, {"horizon": 0},
+                {"spread": -1}, {"threshold_target": 10_001}, {"cost": [1]}):
+        with pytest.raises(ConfigError):
+            resolve_config({"experiment": "switching_cost", "params": bad})
+    assert cli.main(["validate", str(SC_SMALL)]) == 0
+    assert "-> switching_cost (master_seed=62, replicates=1, small=true)" in capsys.readouterr().out
+    out = tmp_path / "sc"
+    assert cli.main(["run", str(SC_SMALL), "--out", str(out)]) == 0
+    with open(out / "rows.csv", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [float(r["harvest_markup"]) for r in rows] == [r["harvest_markup"] for r in sc_res.rows]
+    par = run_from_config({**json.loads(SC_SMALL.read_text()), "n_workers": 2})
+    assert par.rows == sc_res.rows
