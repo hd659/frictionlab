@@ -14,24 +14,15 @@ or a `BoundedRationalAgent.valuation`). Summed over all agents at a common
 mark, trading PnL is zero and the net totals equal minus the fees plus
 decision costs collected: trading between agents only moves surplus around.
 
-`middleman_pnl` (fl-049) splits a search-market `Middleman`'s PnL, inventory
-carried at cost basis, into spread capture (asks received minus the basis of
-units sold), holding cost and decay loss; `net` equals its ledger cash change
-plus the basis of units still held, exactly in ticks.
-
-`info_pnl` (fl-052) splits an agent's PnL under costly information into trading
-gain (fills at the mark net of execution fees), signal cost (paid to the
-`SignalSource` sink) and decision cost: `net = trading_gain - signal_cost -
-decision_cost` equals the agent's equity change at the mark, exactly in ticks.
-
-`lemons_pnl` (fl-055) splits a `LemonsMarket` seller's PnL, the unit valued at
-its own quality q, into trade surplus (price - q if sold) and certification cost:
-`net = trade_surplus - certification_cost` equals cash + (position - 1) * q.
-
-`reputation_pnl` (fl-058) splits a `ReputationMarket` seller's PnL into trade
-surplus (price - q per sale, as if q were delivered), cheating gain (q - delivered)
-and whitewash cost: `net = trade_surplus + cheating_gain - whitewash_cost` equals
-its ledger cash minus the production cost of what it delivered, exactly in ticks.
+Venue-specific splits, each exact in ticks against the ledger:
+- `middleman_pnl` (fl-049): spread capture - holding cost - decay loss = cash change
+  plus the basis of units still held.
+- `info_pnl` (fl-052): trading gain - signal cost - decision cost = equity change.
+- `lemons_pnl` (fl-055): trade surplus (price - q) - certification cost.
+- `reputation_pnl` (fl-058): trade surplus + cheating gain (q - delivered) - whitewash
+  cost = cash minus the production cost of what was delivered.
+- `switching_pnl` (fl-061): seller acquisition-phase margin + harvest-phase margin
+  = cash - c * units sold; `consumer_surplus` gives v - price minus switching cost paid.
 """
 from __future__ import annotations
 
@@ -119,129 +110,8 @@ def breakdown_by(result, mark: Mark, key: Callable[[object], Hashable] = None,
     return out
 
 
-@dataclass(frozen=True)
-class MiddlemanPnL:
-    """Middleman PnL in ticks: `net = spread_capture - holding_cost - decay_loss`."""
-    spread_capture: int = 0   # sum(ask) - sum(basis) over units sold
-    holding_cost: int = 0     # carry charges routed to the hold sink
-    decay_loss: int = 0       # spoilage routed to the decay sink
-    bought: int = 0
-    sold: int = 0
-    held_basis: int = 0       # cost basis of units still in inventory
-
-    @property
-    def net(self) -> int:
-        return self.spread_capture - self.holding_cost - self.decay_loss
-
-    def as_dict(self) -> Dict[str, int]:
-        return {"spread_capture": self.spread_capture, "holding_cost": self.holding_cost,
-                "decay_loss": self.decay_loss, "net": self.net, "bought": self.bought,
-                "sold": self.sold, "held_basis": self.held_basis}
-
-
-@dataclass(frozen=True)
-class InfoPnL:
-    """Costly-information PnL in ticks: `net = trading_gain - signal_cost - decision_cost`."""
-    trading_gain: int = 0     # gross fills at the mark minus execution fees
-    signal_cost: int = 0      # ticks paid for signals
-    decision_cost: int = 0    # deliberation charges
-    signals: int = 0          # signals bought
-    volume: int = 0
-
-    @property
-    def net(self) -> int:
-        return self.trading_gain - self.signal_cost - self.decision_cost
-
-    def as_dict(self) -> Dict[str, int]:
-        return {"trading_gain": self.trading_gain, "signal_cost": self.signal_cost,
-                "decision_cost": self.decision_cost, "net": self.net,
-                "signals": self.signals, "volume": self.volume}
-
-
-def info_pnl(result, source, mark: Mark,
-             agents: Optional[Iterable[int]] = None) -> Dict[int, InfoPnL]:
-    """Per-agent `InfoPnL` of a run against one `SignalSource` (default: every agent)."""
-    out: Dict[int, InfoPnL] = {}
-    for aid, b in pnl_breakdown(result, mark, agents).items():
-        out[aid] = InfoPnL(b.trading - b.fees, source.paid.get(aid, 0), b.decision_costs,
-                           source.purchases.get(aid, 0), b.volume)
-    return out
-
-
-@dataclass(frozen=True)
-class LemonsPnL:
-    """Lemons seller PnL in ticks: `net = trade_surplus - certification_cost`."""
-    trade_surplus: int = 0        # price - quality over units sold
-    certification_cost: int = 0   # ticks paid to the certification sink
-    sold: int = 0
-    certified: int = 0
-
-    @property
-    def net(self) -> int:
-        return self.trade_surplus - self.certification_cost
-
-    def as_dict(self) -> Dict[str, int]:
-        return {"trade_surplus": self.trade_surplus,
-                "certification_cost": self.certification_cost, "net": self.net,
-                "sold": self.sold, "certified": self.certified}
-
-
-def lemons_pnl(market) -> Dict[int, LemonsPnL]:
-    """Per-seller `LemonsPnL` of a fl-055 `LemonsMarket` run."""
-    out = {sid: LemonsPnL() for sid in market.qualities}
-    for t in market.trades:
-        q, p = market.qualities[t.seller_id], out[t.seller_id]
-        out[t.seller_id] = LemonsPnL(p.trade_surplus + (t.price - q) * t.qty, 0, p.sold + t.qty)
-    for sid, fee in market.cert_paid.items():
-        p = out[sid]
-        out[sid] = LemonsPnL(p.trade_surplus, p.certification_cost + fee, p.sold, p.certified + 1)
-    return out
-
-
-@dataclass(frozen=True)
-class ReputationPnL:
-    """Reputation seller PnL in ticks: `net = trade_surplus + cheating_gain - whitewash_cost`."""
-    trade_surplus: int = 0     # sum(price - q) over sales
-    cheating_gain: int = 0     # sum(q - delivered) over sales
-    whitewash_cost: int = 0    # ticks paid to the identity sink
-    sold: int = 0
-    cheats: int = 0
-    whitewashes: int = 0
-
-    @property
-    def net(self) -> int:
-        return self.trade_surplus + self.cheating_gain - self.whitewash_cost
-
-    def as_dict(self) -> Dict[str, int]:
-        return {"trade_surplus": self.trade_surplus, "cheating_gain": self.cheating_gain,
-                "whitewash_cost": self.whitewash_cost, "net": self.net, "sold": self.sold,
-                "cheats": self.cheats, "whitewashes": self.whitewashes}
-
-
-def reputation_pnl(market) -> Dict[int, ReputationPnL]:
-    """Per-seller `ReputationPnL` of a fl-058 `ReputationMarket` run."""
-    acc = {sid: [0, 0, 0, 0] for sid in market.sellers}
-    for t in market.trades:
-        q, out = market.sellers[t.seller_id].quality, market.delivered[t.trade_id]
-        row = acc[t.seller_id]
-        row[0] += (t.price - q) * t.qty
-        row[1] += (q - out) * t.qty
-        row[2] += t.qty
-        row[3] += int(out < q)
-    return {sid: ReputationPnL(r[0], r[1], market.wash_paid[sid], r[2], r[3],
-                               market.sellers[sid].whitewashes) for sid, r in acc.items()}
-
-
-def middleman_pnl(market) -> MiddlemanPnL:
-    """Split the middleman PnL of a fl-046 `SearchMarket` run from its fills and carry log."""
-    mm = market.middleman
-    if mm is None:
-        raise ValueError("market has no middleman")
-    fills = [t for t in market.trades if mm.agent_id in (t.buyer_id, t.seller_id)]
-    asks = sum(t.price for t in fills if t.seller_id == mm.agent_id)
-    bids = sum(t.price for t in fills if t.buyer_id == mm.agent_id)
-    sold = sum(1 for t in fills if t.seller_id == mm.agent_id)
-    held = sum(u.basis for u in mm.inventory)
-    hold = sum(row[2] for row in market.carries)
-    spoil = sum(row[3] for row in market.carries)
-    return MiddlemanPnL(asks - (bids - held), hold, spoil, len(fills) - sold, sold, held)
+# Venue-specific splits live in `venue_pnl` (imported last: it needs the names above).
+from .venue_pnl import (  # noqa: E402
+    InfoPnL, LemonsPnL, MiddlemanPnL, ReputationPnL, SwitchingPnL, consumer_surplus, info_pnl,
+    lemons_pnl, middleman_pnl, reputation_pnl, switching_pnl,
+)

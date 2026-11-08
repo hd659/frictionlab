@@ -11,6 +11,9 @@ clears signal cost plus decision cost (Grossman-Stiglitz), else trades as noise.
 The `ReputationSeller` (fl-058) carries a hidden quality and type into the
 repeated `ReputationMarket`: opportunists milk at a deterministic end-game round
 and any seller whitewashes only when a fresh id net of its cost pays more.
+The `LockinSeller` (fl-061) plays the `SwitchingMarket` duopoly: it prices to
+acquire share below a target, then harvests at rival price + the minimum switching
+cost of its locked-in customers (or posts marginal cost in Bertrand mode).
 """
 from ..costs.information import SignalSource
 from .base import (
@@ -30,6 +33,7 @@ from .middleman import (
     DECAY_SINK_ID, HOLD_SINK_ID, HeldUnit, Middleman, PerishCost,
 )
 from .reputation_seller import ReputationSeller, switch_round
+from .lockin_seller import ACQUIRE, BERTRAND, HARVEST, LockinSeller, harvest_price
 from .noise import NoiseTrader, make_noise_population, order_flow
 from .zero_intelligence import ZICTrader, ZITrader, ZIUTrader, make_zi_population
 
@@ -49,5 +53,6 @@ __all__ = [
     "PerishCost",
     "NoiseTrader", "make_noise_population", "order_flow",
     "ReputationSeller", "switch_round",
+    "ACQUIRE", "BERTRAND", "HARVEST", "LockinSeller", "harvest_price",
     "ZICTrader", "ZITrader", "ZIUTrader", "make_zi_population",
 ]

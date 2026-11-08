@@ -29,6 +29,9 @@
 - `ReputationMarket` (fl-058): repeated hidden-quality market; buyers price a
   seller's integer (good, bad) rating score at the buyer value of its integer
   posterior expected quality; opportunists milk, whitewashing pays an identity sink.
+- `SwitchingMarket` (fl-061): repeated two-seller duopoly with seeded per-consumer
+  switching costs (Klemperer); a consumer leaves its supplier only if rival price +
+  its cost is strictly lower, the cost paid through a friction stack to a switch sink.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -47,6 +50,7 @@ from .lemons import CERTIFIED, POOLED, LemonsMarket, LemonsRound, pooled_price
 from .reputation import (
     IDENTITY_SINK_ID, REPUTATION, ReputationMarket, ReputationRound, score_quality,
 )
+from .switching import SWITCH_SINK_ID, SWITCHING, SwitchingMarket, SwitchingRound
 
 __all__ = [
     # constants
@@ -69,4 +73,6 @@ __all__ = [
     "CERTIFIED", "POOLED", "LemonsMarket", "LemonsRound", "pooled_price",
     # reputation
     "IDENTITY_SINK_ID", "REPUTATION", "ReputationMarket", "ReputationRound", "score_quality",
+    # switching costs and lock-in
+    "SWITCH_SINK_ID", "SWITCHING", "SwitchingMarket", "SwitchingRound",
 ]

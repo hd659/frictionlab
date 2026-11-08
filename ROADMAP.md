@@ -98,8 +98,8 @@ five into one byte-reproducible HTML.
     - [x] API reference: per-package pages under `api/` from `__all__` (or own re-exports), address-free normalized signatures, docstrings, class members, qualified-name anchors and cross-references, `api/index.html` with symbol counts, `--api/--no-api` build flag, `api_coverage` reporting no undocumented public symbol (`frictionlab/docs_site/api_ref.py`)
     - [x] Link check and wrap-up: `frictionlab docs check DIR` parses every built page with `html.parser`, resolves each internal href to an output file and each `#fragment` to an element id, reports all broken links in one pass, flags any http(s) link outside an empty-by-default allowlist, exits 2 on any break; CI `docs` job builds and checks `_site` (no deploy, no network); `examples/phase6_ecosystem.py` runs validate / run / bench gate / docs build / docs check into one directory with a manifest (`frictionlab/docs_site/linkcheck.py`, `docs/phase6-ecosystem.md`)
 
-Phase 6 status: complete. The simulator now has an ecosystem around it, and every piece
-is held in place by a test or a CI gate (`docs/phase6-ecosystem.md`).
+Phase 6 status: complete (4 of 4). The simulator now has an ecosystem around it, and every
+piece is held in place by a test or a CI gate (`docs/phase6-ecosystem.md`).
 - Config and registry: JSON / YAML configs resolve deterministically (defaults < small
   preset < file < flags < `--set`), and every bad dotted path is reported in one pass.
   The five Phase 5 experiments run from config with rows identical to the direct call.
@@ -157,5 +157,12 @@ Phase 9 status: complete (3 of 3). On seed 56 (small preset, 20 sellers) the zer
 
 Phase 10 status: complete (3 of 3). On seed 59 (small preset, 20 sellers, T = 6, opportunists 2500 bps) the cheating rate falls 0.23 -> 0.13 from 6000 to 10000 bps and stays at 0.13 from end-game milking in the last round; traced opportunist seller 8 milks in round 5, matching the analytic milking round 5; at 6000 bps and zero cost there are 15 whitewashes, none at perfect accuracy; the bisected whitewash threshold at 8500 bps is 21 ticks against an analytic deterrent bound of 38; surplus share is at most 0.68 against 0.85 for the pooled lemons twin; over the sweep buyers gain -6850 ticks, honest sellers 34546, opportunists 23244 and 80 go to the identity sink.
 
-## Ongoing maintenance (after Phase 10, loop forever)
+## Phase 11: Switching costs and lock-in
+- [x] Repeated two-seller market with consumer switching costs (Klemperer): `SwitchingMarket` (`markets/switching.py`) runs `T` seeded rounds in which sellers 1 and 2 each post one integer-tick price; each consumer has an integer-tick valuation, a persistent current supplier and a switching cost drawn from a seeded discrete schedule on a per-consumer stream seeded by (seed, consumer id); an attached consumer switches iff rival price + its switching cost is strictly lower than the incumbent price and within its valuation (ties stay), round-0 / unattached consumers take the lower price with ties to seller 1, nobody buys above valuation; each switch charges the cost through a friction stack to `SWITCH_SINK_ID`; `LockinSeller` (`agents/lockin_seller.py`) acquires at an integer-tick acquisition price below a target share (bps, > 5000) and then harvests at `harvest_price` = rival price + the minimum switching cost of its own customers, capped by their minimum valuation, the largest switch-proof price; a Bertrand mode posts marginal cost every round and an optional entry round models a late entrant; fills reduce to `TradeRecord` tagged `"switching"` and settle through the ledger; `analysis.switching_pnl` splits seller PnL into acquisition-phase loss and harvest-phase gain and `analysis.consumer_surplus` nets out the switching cost paid, exact in ticks (venue splits moved to `analysis/venue_pnl.py`, re-exported from `analysis.pnl`); with zero switching costs and two Bertrand sellers the market reproduces a frictionless repeated Bertrand run bit-for-bit
+- [ ] Switching-cost experiment: harvest markup, market-share persistence, acquisition depth, seller PnL split and consumer surplus over switching-cost level x horizon x entry round, with an analytic harvest markup (minimum switching cost) and a bisected entry-deterrence threshold, registered in the experiment registry with a small preset
+- [ ] Seeded example and write-up: `examples/phase11_switching.py --small` plus a `docs/` page on bargains-then-ripoffs pricing, how lock-in turns past share into future market power, and the switching cost as a friction next to the fl-047 search cost and the fl-028 Coase threshold, linked from `docs/index.md` and link-checked in the docs site
+
+Phase 11 status: in progress (1 of 3).
+
+## Ongoing maintenance (after Phase 11, loop forever)
 - Refactor hot spots, raise coverage, add new agent archetypes and experiments, fix issues found by running examples.
