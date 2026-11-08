@@ -1,0 +1,17 @@
+{
+  "experiment": "lemons",
+  "master_seed": 56,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "certification_costs": [0, 4, 16, 32],
+    "buyer_premiums": [0, 10, 40],
+    "schedule": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+    "n_sellers": 20,
+    "certification": true,
+    "threshold_premium": 20,
+    "uptake_fraction": 0.05
+  }
+}

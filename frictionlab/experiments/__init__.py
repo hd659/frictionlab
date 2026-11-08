@@ -45,6 +45,11 @@
   spread, price efficiency, buyer vs non-buyer PnL and sink revenue.
   `gs_equilibrium_informed_share` is the analytic share, `gs_population` the
   replicator and `find_information_collapse` bisects for the collapse cost.
+- `lemons` (Phase 9): the fl-055 `LemonsMarket` swept over certification_cost x
+  buyer_premium; traded share (overall and by quality quintile), pooled price and
+  rounds, certification uptake and cutoff, surplus share and certification paid.
+  `akerlof_pooled_price` / `certification_cutoff` are the analytic fixed point and
+  cutoff, and `find_certification_threshold` bisects for the uptake-collapse cost.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -81,6 +86,11 @@ from .intermediation import (
     Config as IntermediationConfig, IntermediationCell, IntermediationThreshold,
     analytic_bound as intermediation_bound, find_intermediation_threshold,
     intermediation_metrics, middleman_indifference_spread, run_intermediation,
+)
+from .lemons import (
+    CertificationThreshold, Config as LemonsConfig, LemonsCell, akerlof_pooled_price,
+    cell_qualities as lemons_qualities, certification_bound, certification_cutoff,
+    find_certification_threshold, lemons_metrics, run_lemons, run_lemons_grid,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -130,6 +140,10 @@ __all__ = [
     "CommittedBuyer", "GSCell", "GSMaker", "GrossmanStiglitzConfig", "InformationCollapse",
     "analytic_collapse_cost", "find_information_collapse", "gs_equilibrium_informed_share",
     "gs_metrics", "gs_population", "run_grossman_stiglitz", "run_gs_grid",
+    # 9.2 lemons and certification
+    "CertificationThreshold", "LemonsCell", "LemonsConfig", "akerlof_pooled_price",
+    "certification_bound", "certification_cutoff", "find_certification_threshold",
+    "lemons_metrics", "lemons_qualities", "run_lemons", "run_lemons_grid",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",

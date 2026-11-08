@@ -1,4 +1,4 @@
-"""fl-050 / fl-053: intermediation and Grossman-Stiglitz in the fl-036 registry and fl-037 CLI."""
+"""fl-050 / fl-053 / fl-056: intermediation, Grossman-Stiglitz and lemons in the fl-036 registry and fl-037 CLI."""
 import csv
 import json
 from pathlib import Path
@@ -163,3 +163,61 @@ def test_gs_cli_run_and_parallel_match(tmp_path, capsys, gs_res):
     assert [float(r["buyer_fraction"]) for r in rows] == [r["buyer_fraction"] for r in gs_res.rows]
     par = run_from_config({**json.loads(GS_SMALL.read_text()), "n_workers": 2})
     assert par.rows == gs_res.rows
+
+
+# ---- fl-056: lemons and certification ------------------------------------------
+LM_SMALL = CONFIGS / "lemons_small.json"
+
+
+@pytest.fixture(scope="module")
+def lm_res():
+    return run_from_config(LM_SMALL)
+
+
+def test_lemons_registered_defaults_validate_against_schema():
+    from frictionlab.config.schema import validate_params
+    from frictionlab.experiments import LemonsConfig
+    exp = get_experiment("lemons")
+    assert "lemons" in list_experiments() and exp.master_seed == 56 and "lemons" in exp.doc
+    assert validate_params(exp.defaults, exp.param_schema) == exp.defaults
+    assert list(exp.defaults) == list(exp.param_schema)
+    base = LemonsConfig()
+    assert tuple(exp.defaults["schedule"]) == base.schedule and exp.defaults["n_sellers"] == base.n_sellers
+    with pytest.raises(ConfigError) as e:
+        get_experiment("lemmons")
+    assert "lemons" in str(e.value)
+
+
+def test_lemons_shipped_config_equals_small_preset():
+    raw, cfg = load_config(LM_SMALL), resolve_config(LM_SMALL)
+    preset = resolve_config({"experiment": "lemons", "small": True})
+    assert raw["params"] == cfg.params == preset.params and cfg.small and cfg.output is None
+    assert cfg.master_seed == 56 and cfg.replicates == 1
+
+
+def test_lemons_run_from_config_rows_equal_direct_call(lm_res):
+    from frictionlab.experiments import LemonsConfig, run_lemons
+    p = lm_res.config["params"]
+    cfg = LemonsConfig(schedule=tuple(p["schedule"]), n_sellers=p["n_sellers"],
+                       certification=p["certification"])
+    direct = run_lemons(cfg, p["certification_costs"], p["buyer_premiums"],
+                        threshold_premium=p["threshold_premium"],
+                        uptake_fraction=p["uptake_fraction"], replicates=1, master_seed=56)
+    assert lm_res.rows == direct.rows and lm_res.findings == direct.findings
+    assert lm_res.config == resolve_config(LM_SMALL).to_dict()
+
+
+def test_lemons_bad_params_rejected_and_cli_parallel_match(tmp_path, capsys, lm_res):
+    for bad in ({"certification_costs": [-1]}, {"n_sellers": 0}, {"uptake_fraction": 0.0},
+                {"schedule": [0, 10]}, {"premium": [1]}):
+        with pytest.raises(ConfigError):
+            resolve_config({"experiment": "lemons", "params": bad})
+    assert cli.main(["validate", str(LM_SMALL)]) == 0
+    assert "-> lemons (master_seed=56, replicates=1, small=true)" in capsys.readouterr().out
+    out = tmp_path / "lm"
+    assert cli.main(["run", str(LM_SMALL), "--out", str(out)]) == 0
+    with open(out / "rows.csv", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert [float(r["traded_share"]) for r in rows] == [r["traded_share"] for r in lm_res.rows]
+    par = run_from_config({**json.loads(LM_SMALL.read_text()), "n_workers": 2})
+    assert par.rows == lm_res.rows

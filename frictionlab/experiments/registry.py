@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
 from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, validate_params
 from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, grossman_stiglitz,
-               intermediation, search_cost)
+               intermediation, lemons, search_cost)
 from .base import ExperimentResult
 from .two_venue import MarketConfig
 
@@ -28,6 +28,7 @@ ConfigLike = Union[str, Path, Mapping[str, Any], ExperimentConfig]
 
 class UnknownExperimentError(ConfigError, LookupError):
     """Config error for an unregistered experiment name, with a close-match hint."""
+
     def __init__(self, name: str, suggestion: Optional[str]) -> None:
         hint = f"; did you mean {suggestion!r}?" if suggestion else ""
         super().__init__([("experiment", f"unknown experiment {name!r}{hint} "
@@ -127,7 +128,7 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- Phase 5 experiments, Phase 7 search experiments, Phase 8 costly information
+# ---- Phase 5 experiments, Phase 7 search, Phase 8 costly information, Phase 9 lemons
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
     return cls(**{**{k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}, **extra})
@@ -141,8 +142,8 @@ INTS, RATE, TICKS = Param("int", seq=True), Param("float", min=1e-9), Param("int
 POS, NONNEG, PROB = Param("int", min=1), Param("float", min=0), Param("float", min=0, max=1)
 
 register_experiment(
-    "coase", lambda p, s, r, w: coase.run_coase(_build(coase.Config, p), p["levels"], replicates=r,
-                                                master_seed=s, n_workers=w),
+    "coase", lambda p, s, r, w: coase.run_coase(_build(coase.Config, p), p["levels"], replicates=r, master_seed=s,
+                                                n_workers=w),
     {"values": INTS, "costs": INTS, "levels": Param("int", seq=True, friction=True, nullable=True,
                                                     doc="F grid; null -> 0..analytic bound"),
      "taker_share": PROB, "max_wakeups": POS},
@@ -152,8 +153,7 @@ register_experiment(
 
 register_experiment(
     "decision_cost", lambda p, s, r, w: decision_cost.run_decision_cost(
-        _build(decision_cost.Config, p), p["costs"], p["aspirations"], replicates=r,
-        master_seed=s, n_workers=w),
+        _build(decision_cost.Config, p), p["costs"], p["aspirations"], replicates=r, master_seed=s, n_workers=w),
     {"costs": TICKS, "aspirations": Param("float", seq=True, min=0), "max_steps": POS,
      "horizon": NONNEG, "n_br": POS, "n_zi": POS, "kappa": NONNEG},
     _pick(decision_cost.Config(), "max_steps", "horizon", "n_br", "n_zi", "kappa",
@@ -163,11 +163,9 @@ register_experiment(
 
 register_experiment(
     "adverse_selection", lambda p, s, r, w: adverse_selection.run_grid(
-        _build(adverse_selection.Config, p), p["shares"], p["jumps"], replicates=r,
-        master_seed=s, n_workers=w),
+        _build(adverse_selection.Config, p), p["shares"], p["jumps"], replicates=r, master_seed=s, n_workers=w),
     {"shares": Param("float", seq=True, min=0, max=1), "jumps": Param("int", seq=True, min=1),
-     "horizon": NONNEG, "taker_bps": Param("int", friction=True), "alpha": POS,
-     "batch_interval": NONNEG},
+     "horizon": NONNEG, "taker_bps": Param("int", friction=True), "alpha": POS, "batch_interval": NONNEG},
     _pick(adverse_selection.Config(), "horizon", "taker_bps", "alpha", "batch_interval",
           shares=list(adverse_selection.SHARES), jumps=list(adverse_selection.JUMPS)),
     small={"shares": [0.0, 0.25, 0.5], "jumps": [2, 8]},
@@ -180,58 +178,47 @@ register_experiment(
                start=(tuple(p["start_A"]), tuple(p["start_B"])), replicates=r),
         master_seed=s, n_workers=w),
     {"makers": INTS, "takers": TICKS, "start_A": Param("int", seq=True, length=2),
-     "start_B": Param("int", seq=True, length=2), "max_rounds": POS, "window": POS,
-     "steps": POS, "epoch": POS},
+     "start_B": Param("int", seq=True, length=2), "max_rounds": POS, "window": POS, "steps": POS, "epoch": POS},
     _pick(_FW, "makers", "takers", "max_rounds", "window", start_A=list(_FW.start[0]),
           start_B=list(_FW.start[1]), steps=_FW.market.steps, epoch=_FW.market.epoch),
-    small={"steps": 120, "epoch": 20, "makers": [-2, -1, 0], "takers": [1, 2, 3, 4],
-           "max_rounds": 6},
-    master_seed=32, replicates=_FW.replicates, small_replicates=1,
-    doc="two-venue Bertrand fee undercutting")
+    small={"steps": 120, "epoch": 20, "makers": [-2, -1, 0], "takers": [1, 2, 3, 4], "max_rounds": 6},
+    master_seed=32, replicates=_FW.replicates, small_replicates=1, doc="two-venue Bertrand fee undercutting")
 
 register_experiment(
     "funding_arb", lambda p, s, r, w: funding_arb.run_funding_arb(
-        _build(funding_arb.Config, p), p["levels"], p["probs"], replicates=r, master_seed=s,
-        n_workers=w),
-    {"levels": Param("int", seq=True, friction=True, nullable=True,
-                     doc="shock gas grid; null -> default_levels"),
+        _build(funding_arb.Config, p), p["levels"], p["probs"], replicates=r, master_seed=s, n_workers=w),
+    {"levels": Param("int", seq=True, friction=True, nullable=True, doc="shock gas grid; null -> default_levels"),
      "probs": Param("float", seq=True, min=0, max=1), "calm_gas": Param("int", friction=True),
      "p_calm": PROB, "decision_cost": Param("int", friction=True),
      "taker_bps": Param("int", friction=True), "lp_fee_bps": Param("int", friction=True),
      "horizon": POS, "until": NONNEG},
     _pick(funding_arb.Config(), "calm_gas", "p_calm", "decision_cost", "taker_bps", "lp_fee_bps",
           "horizon", "until", levels=None, probs=[0.0, 0.1, 0.3, 0.6]),
-    small={"probs": [0.0, 0.3, 0.6]},
-    master_seed=34, replicates=1, small_replicates=1, doc="funding-rate arbitrage under gas shocks")
+    small={"probs": [0.0, 0.3, 0.6]}, master_seed=34, doc="funding-rate arbitrage under gas shocks")
 
 register_experiment(
     "search_cost", lambda p, s, r, w: search_cost.run_search_cost(
-        _build(search_cost.Config, p), p["search_costs"], p["decays"], replicates=r,
-        master_seed=s, n_workers=w),
-    {"search_costs": TICKS, "decays": TICKS, "values": INTS, "costs": INTS,
-     "meeting_rate": Param("float", min=1e-9), "buyer_weight_bps": Param("int", min=0, max=10_000),
-     "floor": POS, "until": NONNEG},
+        _build(search_cost.Config, p), p["search_costs"], p["decays"], replicates=r, master_seed=s, n_workers=w),
+    {"search_costs": TICKS, "decays": TICKS, "values": INTS, "costs": INTS, "meeting_rate": Param("float", min=1e-9),
+     "buyer_weight_bps": Param("int", min=0, max=10_000), "floor": POS, "until": NONNEG},
     _pick(search_cost.Config(), "values", "costs", "meeting_rate", "buyer_weight_bps", "floor",
           "until", search_costs=[0, 5, 10, 20, 30, 40, 52], decays=[0, 1, 2, 4]),
     small={"search_costs": [0, 10, 30, 52], "decays": [0, 2], "until": 100.0},
-    master_seed=47, replicates=2, small_replicates=1,
-    doc="search cost x perishability in a bilateral search market")
+    master_seed=47, replicates=2, small_replicates=1, doc="search cost x perishability in a bilateral search market")
 
 register_experiment(
     "intermediation", lambda p, s, r, w: intermediation.run_intermediation(
-        _build(intermediation.Config, p), p["search_costs"], p["half_spreads"], replicates=r,
-        master_seed=s, n_workers=w),
+        _build(intermediation.Config, p), p["search_costs"], p["half_spreads"], replicates=r, master_seed=s,
+        n_workers=w),
     {"search_costs": TICKS, "half_spreads": TICKS, "values": INTS, "costs": INTS,
-     "meeting_rate": RATE, "middleman_meeting_rate": RATE,
-     "capacity": POS, "holding_cost": Param("int", friction=True),
-     "decay": Param("int", friction=True), "floor": POS,
+     "meeting_rate": RATE, "middleman_meeting_rate": RATE, "capacity": POS,
+     "holding_cost": Param("int", friction=True), "decay": Param("int", friction=True), "floor": POS,
      "buyer_weight_bps": Param("int", min=0, max=10_000), "until": NONNEG},
     _pick(intermediation.Config(), "values", "costs", "meeting_rate", "middleman_meeting_rate",
           "capacity", "holding_cost", "decay", "floor", "buyer_weight_bps", "until",
           search_costs=[0, 1, 2, 4, 8, 16, 32], half_spreads=[0, 2, 4, 8, 16, 24]),
     small={"search_costs": [0, 2, 8, 32], "half_spreads": [0, 4, 16], "until": 100.0},
-    master_seed=50, replicates=2, small_replicates=1,
-    doc="middleman half-spread x search cost in a bilateral search market")
+    master_seed=50, replicates=2, small_replicates=1, doc="middleman half-spread x search cost in a search market")
 
 _GS = grossman_stiglitz
 register_experiment(
@@ -248,3 +235,16 @@ register_experiment(
           population_costs=[0, 4, 9], generations=8, collapse_floor=0.05),
     small={"signal_costs": [0, 2, 4, 8], "noise_intensities": [1.0, 4.0], "horizon": 40.0},
     master_seed=53, replicates=2, small_replicates=1, doc="signal cost x noise: who buys costly information")
+
+_LM, LM_POS = lemons.Config(), {"threshold_premium": 20, "uptake_fraction": 0.05}
+register_experiment(
+    "lemons", lambda p, s, r, w: lemons.run_lemons(
+        _build(lemons.Config, p), p["certification_costs"], p["buyer_premiums"], replicates=r,
+        master_seed=s, n_workers=w, **{k: p[k] for k in LM_POS}),
+    {"certification_costs": TICKS, "buyer_premiums": TICKS, "schedule": Param("int", seq=True, min=1),
+     "n_sellers": POS, "certification": Param("bool"), "threshold_premium": Param("int", friction=True),
+     "uptake_fraction": Param("float", min=1e-9, max=1)},
+    _pick(_LM, "n_sellers", "certification", schedule=list(_LM.schedule), **LM_POS,
+          certification_costs=list(lemons.COSTS), buyer_premiums=list(lemons.PREMIUMS)),
+    small={"certification_costs": [0, 4, 16, 32], "buyer_premiums": [0, 10, 40], "n_sellers": 20},
+    master_seed=56, doc="certification cost x buyer premium in an Akerlof lemons market")
