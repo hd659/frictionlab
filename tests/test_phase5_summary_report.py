@@ -1,4 +1,4 @@
-"""fl-054 / fl-057 / fl-060: `phase5_summary_report.py --include-phase8/9/10`.
+"""fl-054 / fl-057 / fl-060 / fl-066: `phase5_summary_report.py --include-phase8/9/10/12`.
 
 The default five-section report and the `--include-phase7/8/9` reports are frozen
 by sha256, so no later flag can perturb any of them.
@@ -190,3 +190,58 @@ def test_phase10_section_matches_run_from_config(ex):
 def test_phase10_report_is_byte_reproducible(ex, reports, tmp_path):
     assert ex.main(["--out", str(tmp_path), "--include-phase10"]) == 0
     assert (tmp_path / "phase5_summary.html").read_bytes() == reports[("--include-phase10",)]
+
+
+# ---------------------------------------------------------------- fl-066: --include-phase12
+# sha256 of --include-phase11 and of --include-phase7 ... --include-phase11 (fl-063)
+PHASE11_SHA256 = "803a7b61b0139e0efe5f32ee4fd4331b13b5eaf6034c1c1e4c840086ea8ea7ab"
+PHASE7_11_SHA256 = "e93c05c4e042aa517ed8799989674daf4169cd7a42a1765abb8ad6d6d0fede3d"
+CM_TITLE = "critical_mass (seed 65)"
+ALL11 = ALL9 + ("--include-phase10", "--include-phase11")
+P12 = ("--include-phase12",)
+
+
+@pytest.fixture(scope="module")
+def reports12(ex, reports, tmp_path_factory):
+    out = {(): reports[()]}
+    for flags in (("--include-phase11",), ALL11, P12, ALL11 + P12):
+        d = tmp_path_factory.mktemp("summary12")
+        assert ex.main(["--out", str(d), *flags]) == 0
+        out[flags] = (d / "phase5_summary.html").read_bytes()
+    return out
+
+
+def test_phase11_reports_are_unchanged(reports12):
+    assert hashlib.sha256(reports12[()]).hexdigest() == DEFAULT_SHA256
+    assert hashlib.sha256(reports12[("--include-phase11",)]).hexdigest() == PHASE11_SHA256
+    assert hashlib.sha256(reports12[ALL11]).hexdigest() == PHASE7_11_SHA256
+    assert CM_TITLE not in titles(reports12[ALL11])
+
+
+def test_phase12_flag_adds_exactly_one_section(reports12):
+    assert titles(reports12[P12]) == titles(reports12[()]) + [CM_TITLE]
+    assert titles(reports12[ALL11 + P12]) == titles(reports12[ALL11]) + [CM_TITLE]
+
+
+def test_phase12_section_is_offline_and_carries_headline(reports12):
+    data = reports12[P12]
+    assert not re.search(r"https?://", data.decode("utf-8"), re.I)
+    root = parse(data)
+    header = "".join(root.find("body/header").itertext())
+    assert "4 cold-start traps without seeding" in header
+    assert "from seed 8 (analytic critical mass 8) at adoption cost 2" in header
+    assert "Phase 12 critical mass" in "".join(root.find("head/title").itertext())
+    sec = [s for s in root.iter("section") if s.get("class") == "experiment"][-1]
+    assert "Sweep: share by adoption_cost, seed_members" in "".join(sec.itertext())
+    assert sec.find("p").get("class") == "headline"
+
+
+def test_phase12_section_matches_run_from_config(ex, reports12, tmp_path):
+    from frictionlab.experiments import run_from_config
+    res, headline, rows, by, metric = ex.critical_mass()
+    direct = run_from_config(EXAMPLES / "configs" / "critical_mass_small.json")
+    assert rows == direct.rows and res.findings == direct.findings
+    assert by == ["adoption_cost", "seed_members"] and metric == "share"
+    assert f"from seed {direct.findings['tipping_seed']} " in headline
+    assert ex.main(["--out", str(tmp_path), *P12]) == 0
+    assert (tmp_path / "phase5_summary.html").read_bytes() == reports12[P12]

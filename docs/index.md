@@ -137,6 +137,19 @@ the summary report as one more section.
 `examples/phase5_summary_report.py --include-phase11` adds the switching-cost experiment
 to the summary report as one more section.
 
+## Phase 12: network effects and critical mass
+
+- [Phase 12: network effects, critical mass and cold start](phase12-critical-mass.md)
+  covers why cross-side benefits create multiple equilibria and a cold-start trap, why a
+  one-time adoption friction raises the critical mass so a seeding subsidy is the price
+  of crossing it, and how the tipping seed relates to the Coase threshold and the
+  lock-in threshold.
+  Config: `examples/configs/critical_mass_small.json`.
+  Example: `examples/phase12_critical_mass.py`.
+
+`examples/phase5_summary_report.py --include-phase12` adds the critical-mass experiment
+to the summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
