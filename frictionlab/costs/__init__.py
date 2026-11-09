@@ -19,6 +19,9 @@ cost for joining a `PlatformMarket`, routed to `ADOPTION_SINK_ID`.
 
 Congestion (fl-067): `CongestionCost(toll, waiting)` charges a `QueueMarket` joiner an
 admission toll (to `TOLL_SINK_ID`) and a per-step waiting cost (to `WAIT_SINK_ID`).
+
+Menu cost (fl-070): `MenuCost(cost)` charges a seller an integer-tick cost per change of
+its posted price in a `MenuCostMarket`, routed to `MENU_SINK_ID`.
 """
 from .base import BOTH, TAKER_ONLY, CostModel, Fill, Role, fills_of, to_frac, venue_round
 from .fees import BPS, FixedCost, HalfSpreadCost, LatencyCost, MakerTakerFee
@@ -30,6 +33,7 @@ from .information import (
 from .certification import CERT_SINK_ID, CertificationPolicy
 from .adoption import ADOPTION_SINK_ID, AdoptionCost
 from .congestion import TOLL_SINK_ID, WAIT_SINK_ID, CongestionCost
+from .menu import MENU_SINK_ID, MenuCost
 
 __all__ = [
     "BOTH", "BPS", "TAKER_ONLY",
@@ -42,4 +46,5 @@ __all__ = [
     "CERT_SINK_ID", "CertificationPolicy",
     "ADOPTION_SINK_ID", "AdoptionCost",
     "TOLL_SINK_ID", "WAIT_SINK_ID", "CongestionCost",
+    "MENU_SINK_ID", "MenuCost",
 ]

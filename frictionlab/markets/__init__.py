@@ -38,6 +38,9 @@
 - `QueueMarket` (fl-067): single-server observable queue (Naor); Bernoulli arrivals
   and services on separate seeded streams, customers join iff reward - toll - expected
   waiting cost >= 0, with a `CongestionCost` toll and per-step waiting charge.
+- `MenuCostMarket` (fl-070): repeated posted-price market with drifting integer targets;
+  `SsPricer`s keep their price inside an (S, s) band and pay a `MenuCost` per change,
+  losing curvature * (p - p*)^2 per step while misaligned (nominal rigidity).
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -59,6 +62,7 @@ from .reputation import (
 from .switching import SWITCH_SINK_ID, SWITCHING, SwitchingMarket, SwitchingRound
 from .platform import PLATFORM, PLATFORM_ID, Flow, PlatformMarket, PlatformRound
 from .queue_market import QUEUE, Arrival, Customer, QueueMarket, ceil_div
+from .menu_cost import DEMAND_ID, MENU, MenuCostMarket, MenuStep
 
 __all__ = [
     # constants
@@ -87,4 +91,6 @@ __all__ = [
     "PLATFORM", "PLATFORM_ID", "Flow", "PlatformMarket", "PlatformRound",
     # congestion and queueing
     "QUEUE", "Arrival", "Customer", "QueueMarket", "ceil_div",
+    # menu costs and nominal rigidity
+    "DEMAND_ID", "MENU", "MenuCostMarket", "MenuStep",
 ]

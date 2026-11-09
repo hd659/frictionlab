@@ -14,6 +14,8 @@ and any seller whitewashes only when a fresh id net of its cost pays more.
 The `LockinSeller` (fl-061) plays the `SwitchingMarket` duopoly: it prices to
 acquire share below a target, then harvests at rival price + the minimum switching
 cost of its locked-in customers (or posts marginal cost in Bertrand mode).
+The `SsPricer` (fl-070) keeps its posted price while |p - p*| <= band and otherwise
+resets to its target plus the drift over the band half-life (Sheshinski-Weiss (S, s)).
 """
 from ..costs.information import SignalSource
 from .base import (
@@ -34,6 +36,7 @@ from .middleman import (
 )
 from .reputation_seller import ReputationSeller, switch_round
 from .lockin_seller import ACQUIRE, BERTRAND, HARVEST, LockinSeller, harvest_price
+from .ss_pricer import SsPricer, half_life, overshoot
 from .noise import NoiseTrader, make_noise_population, order_flow
 from .zero_intelligence import ZICTrader, ZITrader, ZIUTrader, make_zi_population
 
@@ -54,5 +57,6 @@ __all__ = [
     "NoiseTrader", "make_noise_population", "order_flow",
     "ReputationSeller", "switch_round",
     "ACQUIRE", "BERTRAND", "HARVEST", "LockinSeller", "harvest_price",
+    "SsPricer", "half_life", "overshoot",
     "ZICTrader", "ZITrader", "ZIUTrader", "make_zi_population",
 ]

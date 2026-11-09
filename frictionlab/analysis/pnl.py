@@ -28,6 +28,7 @@ Venue-specific splits, each exact in ticks against the ledger:
   standalone value + cross-side gain - net fees - adoption cost paid.
 - `queue_surplus` (fl-067): customer reward (if served) - toll - waiting cost = net
   surplus; `operator_pnl` gives the queue operator's toll revenue (= toll sink cash).
+- `menu_pnl` (fl-070): seller frictionless profit - misalignment loss - menu cost = cash.
 """
 from __future__ import annotations
 
@@ -212,6 +213,33 @@ def queue_surplus(market) -> Dict[int, QueueSurplus]:
 def operator_pnl(market) -> OperatorPnL:
     """Toll revenue of a fl-067 `QueueMarket` run."""
     return OperatorPnL(market.congestion.toll_revenue, market.joins)
+
+
+@dataclass(frozen=True)
+class MenuPnL:
+    """Menu-cost seller PnL: `net = frictionless - misalignment - menu_cost` in ticks."""
+    frictionless: int = 0      # steps * base_profit (profit at the target every step)
+    misalignment: int = 0      # sum curvature * (p - p*)^2
+    menu_cost: int = 0         # menu cost paid to the menu sink
+    adjustments: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.frictionless - self.misalignment - self.menu_cost
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"frictionless": self.frictionless, "misalignment": self.misalignment,
+                "menu_cost": self.menu_cost, "adjustments": self.adjustments, "net": self.net}
+
+
+def menu_pnl(market) -> Dict[int, MenuPnL]:
+    """Per-seller `MenuPnL` of a fl-070 `MenuCostMarket` run."""
+    out = {}
+    for i in market.sellers:
+        rows = market.path(i)
+        out[i] = MenuPnL(market.base_profit * len(rows), sum(r.loss for r in rows),
+                         market.menu.paid.get(i, 0), market.menu.adjustments_of(i))
+    return out
 
 
 # Venue-specific splits live in `venue_pnl` (imported last: it needs the names above).
