@@ -26,8 +26,13 @@ unchanged by it.
 (`examples/configs/reputation_small.json`) as one more section, after every earlier
 optional section. The default and `--include-phase7/8/9` outputs are unchanged by it.
 
+`--include-phase11` appends the fl-062 switching-cost experiment
+(`examples/configs/switching_cost_small.json`) as one more section, after every earlier
+optional section. The default and `--include-phase7/8/9/10` outputs are unchanged by it.
+
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
                                              [--include-phase9] [--include-phase10]
+                                             [--include-phase11]
 """
 from __future__ import annotations
 
@@ -200,6 +205,19 @@ def reputation() -> Spec:
             res.rows, [rp.ACC, rp.WASH], "surplus_share")
 
 
+def switching_cost() -> Spec:
+    from frictionlab.experiments import run_from_config, switching_cost as sc
+    raw = json.loads((HERE / "configs" / "switching_cost_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    return (res, f"harvest markup up to {f['max_harvest_markup']:g} ticks over marginal cost in "
+                 f"{f['lockin_cells']} lock-in cells; markup exceeds {f['min_markup']} ticks from mean "
+                 f"switching cost {f['lockin_threshold']} (analytic {f['analytic_lockin_threshold']}) at "
+                 f"target {f['threshold_target']} bps; consumers lose up to "
+                 f"{f['max_cs_loss_vs_bertrand']} ticks against Bertrand",
+            res.rows, [sc.MEAN, sc.TARGET], "harvest_markup")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -210,12 +228,14 @@ PHASE7: Tuple[Callable[[], Spec], ...] = (search_cost, intermediation)
 PHASE8: Tuple[Callable[[], Spec], ...] = (grossman_stiglitz,)
 PHASE9: Tuple[Callable[[], Spec], ...] = (lemons,)
 PHASE10: Tuple[Callable[[], Spec], ...] = (reputation,)
+PHASE11: Tuple[Callable[[], Spec], ...] = (switching_cost,)
 
 
 def build(include_phase7: bool = False, include_phase8: bool = False,
-          include_phase9: bool = False, include_phase10: bool = False) -> Report:
+          include_phase9: bool = False, include_phase10: bool = False,
+          include_phase11: bool = False) -> Report:
     runs = (EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
-            + (PHASE9 if include_phase9 else ()) + (PHASE10 if include_phase10 else ()))
+            + (PHASE9 if include_phase9 else ()) + (PHASE10 if include_phase10 else ()) + (PHASE11 if include_phase11 else ()))
     specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
@@ -228,6 +248,8 @@ def build(include_phase7: bool = False, include_phase8: bool = False,
         title += " plus Phase 9 lemons"
     if include_phase10:
         title += " plus Phase 10 reputation"
+    if include_phase11:
+        title += " plus Phase 11 switching costs"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -247,8 +269,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="append the Phase 9 lemons and certification experiment as one more section")
     ap.add_argument("--include-phase10", action="store_true",
                     help="append the Phase 10 reputation experiment as one more section")
+    ap.add_argument("--include-phase11", action="store_true",
+                    help="append the Phase 11 switching-cost experiment as one more section")
     a = ap.parse_args(argv)
-    rep = build(a.include_phase7, a.include_phase8, a.include_phase9, a.include_phase10)
+    rep = build(a.include_phase7, a.include_phase8, a.include_phase9, a.include_phase10,
+                a.include_phase11)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))

@@ -124,6 +124,19 @@ summary report as one more section.
 `examples/phase5_summary_report.py --include-phase10` adds the reputation experiment to
 the summary report as one more section.
 
+## Phase 11: switching costs
+
+- [Phase 11: switching costs, bargain-then-ripoff pricing and lock-in](phase11-switching-cost.md)
+  covers why switching costs move competition ex ante, why the harvest markup is bounded
+  by the minimum switching cost among locked-in customers, and how the lock-in threshold
+  relates to the Coase threshold, the search collapse bound and the whitewash deterrent
+  cost.
+  Config: `examples/configs/switching_cost_small.json`.
+  Example: `examples/phase11_switching_cost.py`.
+
+`examples/phase5_summary_report.py --include-phase11` adds the switching-cost experiment
+to the summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
