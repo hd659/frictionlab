@@ -32,6 +32,9 @@
 - `SwitchingMarket` (fl-061): repeated two-seller duopoly with seeded per-consumer
   switching costs (Klemperer); a consumer leaves its supplier only if rival price +
   its cost is strictly lower, the cost paid through a friction stack to a switch sink.
+- `PlatformMarket` (fl-064): two-sided platform with integer-tick standalone values,
+  cross-side benefits and fees (negative = subsidy); myopic join / leave dynamics with
+  a one-time `AdoptionCost`, stopping at a fixed point or 2-cycle (cold start).
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -51,6 +54,7 @@ from .reputation import (
     IDENTITY_SINK_ID, REPUTATION, ReputationMarket, ReputationRound, score_quality,
 )
 from .switching import SWITCH_SINK_ID, SWITCHING, SwitchingMarket, SwitchingRound
+from .platform import PLATFORM, PLATFORM_ID, Flow, PlatformMarket, PlatformRound
 
 __all__ = [
     # constants
@@ -75,4 +79,6 @@ __all__ = [
     "IDENTITY_SINK_ID", "REPUTATION", "ReputationMarket", "ReputationRound", "score_quality",
     # switching costs and lock-in
     "SWITCH_SINK_ID", "SWITCHING", "SwitchingMarket", "SwitchingRound",
+    # network effects and cold start
+    "PLATFORM", "PLATFORM_ID", "Flow", "PlatformMarket", "PlatformRound",
 ]

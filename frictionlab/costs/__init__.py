@@ -13,6 +13,9 @@ noisy two-point state signals for an integer-tick price routed to `INFO_SINK_ID`
 
 Quality certification (fl-055): `CertificationPolicy(cost)` reveals a unit's hidden
 quality for an integer-tick cost routed to `CERT_SINK_ID`.
+
+Adoption friction (fl-064): `AdoptionCost(cost)` is a one-time integer-tick onboarding
+cost for joining a `PlatformMarket`, routed to `ADOPTION_SINK_ID`.
 """
 from .base import BOTH, TAKER_ONLY, CostModel, Fill, Role, fills_of, to_frac, venue_round
 from .fees import BPS, FixedCost, HalfSpreadCost, LatencyCost, MakerTakerFee
@@ -22,6 +25,7 @@ from .information import (
     BPS_ONE, HIGH, INFO_SINK_ID, LOW, SignalSource, breakeven_accuracy, expected_edge, two_point,
 )
 from .certification import CERT_SINK_ID, CertificationPolicy
+from .adoption import ADOPTION_SINK_ID, AdoptionCost
 
 __all__ = [
     "BOTH", "BPS", "TAKER_ONLY",
@@ -32,4 +36,5 @@ __all__ = [
     "BPS_ONE", "HIGH", "INFO_SINK_ID", "LOW", "SignalSource", "breakeven_accuracy",
     "expected_edge", "two_point",
     "CERT_SINK_ID", "CertificationPolicy",
+    "ADOPTION_SINK_ID", "AdoptionCost",
 ]

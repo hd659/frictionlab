@@ -23,6 +23,9 @@ Venue-specific splits, each exact in ticks against the ledger:
   cost = cash minus the production cost of what was delivered.
 - `switching_pnl` (fl-061): seller acquisition-phase margin + harvest-phase margin
   = cash - c * units sold; `consumer_surplus` gives v - price minus switching cost paid.
+- `platform_pnl` (fl-064): fee revenue - subsidy outlay (negative fees plus seeded
+  adoption paid) = platform cash change; `member_surplus` splits each member into
+  standalone value + cross-side gain - net fees - adoption cost paid.
 """
 from __future__ import annotations
 
@@ -108,6 +111,61 @@ def breakdown_by(result, mark: Mark, key: Callable[[object], Hashable] = None,
         k = key(result.agents[aid])
         out[k] = out.get(k, ZERO) + b
     return out
+
+
+@dataclass(frozen=True)
+class PlatformPnL:
+    """Platform PnL in ticks: `net = fee_revenue - subsidy_outlay` (= its cash change)."""
+    fee_revenue: int = 0       # positive participation fees collected
+    subsidy_outlay: int = 0    # negative-fee payouts plus adoption costs it covered
+
+    @property
+    def net(self) -> int:
+        return self.fee_revenue - self.subsidy_outlay
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"fee_revenue": self.fee_revenue, "subsidy_outlay": self.subsidy_outlay,
+                "net": self.net}
+
+
+@dataclass(frozen=True)
+class MemberSurplus:
+    """Member surplus: `net = standalone + cross_side - fees - adoption` in ticks."""
+    standalone: int = 0        # sum of u_i over rounds as a member
+    cross_side: int = 0        # sum of b * n_other(t-1) over rounds as a member
+    fees: int = 0              # fees paid minus subsidies received
+    adoption: int = 0          # adoption costs paid out of own cash
+
+    @property
+    def net(self) -> int:
+        return self.standalone + self.cross_side - self.fees - self.adoption
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"standalone": self.standalone, "cross_side": self.cross_side,
+                "fees": self.fees, "adoption": self.adoption, "net": self.net}
+
+
+def platform_pnl(market) -> PlatformPnL:
+    """Split the platform account of a fl-064 `PlatformMarket` run from its flow log."""
+    pid = market.platform_id
+    rev = sum(f.amount for f in market.flows if f.kind == "fee")
+    out = sum(f.amount for f in market.flows if f.payer == pid and f.kind != "fee")
+    return PlatformPnL(rev, out)
+
+
+def member_surplus(market) -> Dict[int, MemberSurplus]:
+    """Per-member `MemberSurplus` of a fl-064 `PlatformMarket` run."""
+    fees = dict.fromkeys(market.side_of, 0)
+    adopt = dict.fromkeys(market.side_of, 0)
+    for f in market.flows:
+        if f.kind == "fee":
+            fees[f.member] += f.amount
+        elif f.kind == "subsidy":
+            fees[f.member] -= f.amount
+        elif f.payer == f.member:
+            adopt[f.member] += f.amount
+    return {m: MemberSurplus(u, x, fees[m], adopt[m])
+            for m, (u, x) in market.accrued.items()}
 
 
 # Venue-specific splits live in `venue_pnl` (imported last: it needs the names above).
