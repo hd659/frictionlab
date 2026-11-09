@@ -1,0 +1,17 @@
+{
+  "experiment": "congestion",
+  "master_seed": 68,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "tolls": [0, 4, 8, 16],
+    "waiting_costs": [1, 2, 4],
+    "reward": 24,
+    "arrival_prob_bps": 7000,
+    "service_prob_bps": 5000,
+    "horizon": 200,
+    "probe_waiting_cost": 2
+  }
+}
