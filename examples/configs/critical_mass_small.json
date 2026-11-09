@@ -1,0 +1,23 @@
+{
+  "experiment": "critical_mass",
+  "master_seed": 65,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "adoption_costs": [0, 2, 8, 40],
+    "seed_members": [0, 4, 6, 8],
+    "n_a": 8,
+    "n_b": 8,
+    "standalone_a": [-6],
+    "standalone_b": [-6],
+    "benefit_a": 1,
+    "benefit_b": 1,
+    "fee_a": 0,
+    "fee_b": 0,
+    "horizon": 20,
+    "tipping_cost": 2,
+    "tipping_fraction": 0.9
+  }
+}

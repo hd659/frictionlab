@@ -1,8 +1,6 @@
 """Experiment registry: name -> (runner, param schema, defaults), driven by configs.
 
-`run_from_config("examples/configs/coase_small.json")` resolves and runs one config; a
-runner `runner(params, master_seed, replicates, n_workers)` returns an `ExperimentResult`.
-Resolution order: registered defaults, `small` overrides (if `small: true`), user params.
+`run_from_config(path)` runs one config via `runner(params, master_seed, replicates, n_workers)`.
 """
 from __future__ import annotations
 
@@ -15,8 +13,9 @@ from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, v
 from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, grossman_stiglitz,
                intermediation, lemons, reputation, search_cost, switching_cost)
 from .base import ExperimentResult
+from .critical_mass import PARAM_SCHEMA as CM_SCHEMA, SMALL as CM_SMALL, defaults as cm_defaults, \
+    registry_runner
 from .two_venue import MarketConfig
-
 Runner = Callable[[Dict[str, Any], int, int, int], ExperimentResult]
 ConfigLike = Union[str, Path, Mapping[str, Any], ExperimentConfig]
 
@@ -119,7 +118,7 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- Phase 5 experiments; Phase 7 search; Phase 8 information; Phase 9-11
+# ---- Phase 5 experiments; Phase 7 search; Phase 8 information; Phase 9-12
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
     return cls(**{**{k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}, **extra})
@@ -247,3 +246,5 @@ register_experiment(
           min_markup=4, mean_switching_costs=list(switching_cost.COSTS), target_shares=list(switching_cost.TARGETS)),
     small={"mean_switching_costs": [0, 4, 16, 32], "target_shares": [6000, 9000], "n_consumers": 16, "horizon": 6},
     master_seed=62, doc="mean switching cost x target share: Klemperer lock-in and harvest markup")
+register_experiment("critical_mass", registry_runner, CM_SCHEMA, cm_defaults(), small=CM_SMALL, master_seed=65,
+                    doc="adoption cost x seeded members: critical mass and cold start")

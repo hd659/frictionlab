@@ -63,6 +63,11 @@
   `klemperer_harvest_markup` / `acquisition_discount` are the analytic lock-in
   markup and round-0 investment, and `find_lockin_threshold` bisects for the
   smallest mean switching cost whose harvest markup exceeds a tick floor.
+- `critical_mass` (Phase 12): the fl-064 `PlatformMarket` swept over adoption_cost x
+  seed_members; final membership, convergence (fixed point or 2-cycle), adoption
+  paid, seed subsidy, platform PnL, member surplus and the welfare change against
+  the zero-adoption-cost twin. `critical_mass` / `tipping_fixed_points` iterate the
+  best-response map on counts, and `find_tipping_seed` bisects for the tipping seed.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -115,6 +120,10 @@ from .switching_cost import (
     Config as SwitchingCostConfig, LockinThreshold, SwitchingCell, acquisition_discount,
     analytic_lockin_threshold, find_lockin_threshold, klemperer_harvest_markup,
     run_switching_cost, run_switching_grid, switching_metrics,
+)
+from .critical_mass import (
+    Config as CriticalMassConfig, PlatformCell, TippingSeed, critical_mass, empty_is_fixed_point,
+    find_tipping_seed, platform_metrics, run_critical_mass, run_platform_grid, tipping_fixed_points,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -176,6 +185,10 @@ __all__ = [
     "LockinThreshold", "SwitchingCell", "SwitchingCostConfig", "acquisition_discount",
     "analytic_lockin_threshold", "find_lockin_threshold", "klemperer_harvest_markup",
     "run_switching_cost", "run_switching_grid", "switching_metrics",
+    # 12.2 critical mass and cold start
+    "CriticalMassConfig", "PlatformCell", "TippingSeed", "critical_mass", "empty_is_fixed_point",
+    "find_tipping_seed", "platform_metrics", "run_critical_mass", "run_platform_grid",
+    "tipping_fixed_points",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",
