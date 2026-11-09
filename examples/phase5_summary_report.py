@@ -34,9 +34,15 @@ optional section. The default and `--include-phase7/8/9/10` outputs are unchange
 (`examples/configs/critical_mass_small.json`) as one more section, after every earlier
 optional section. The default and `--include-phase7/8/9/10/11` outputs are unchanged by it.
 
+`--include-phase13` appends the fl-068 congestion experiment
+(`examples/configs/congestion_small.json`) as one more section, after every earlier
+optional section. The default and `--include-phase7` .. `--include-phase12` outputs are
+unchanged by it.
+
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
                                              [--include-phase9] [--include-phase10]
                                              [--include-phase11] [--include-phase12]
+                                             [--include-phase13]
 """
 from __future__ import annotations
 
@@ -235,6 +241,19 @@ def critical_mass() -> Spec:
             res.rows, ["adoption_cost", "seed_members"], "share")
 
 
+def congestion() -> Spec:
+    from frictionlab.experiments import run_from_config
+    raw = json.loads((HERE / "configs" / "congestion_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    return (res, f"arrivals over-join: individual threshold {f['individual_threshold']} vs social "
+                 f"{f['social_threshold']} at waiting cost {f['probe_waiting_cost']}; optimal toll "
+                 f"{f['bisected_toll']} (analytic {f['naor_optimal_toll']}); welfare gain up to "
+                 f"{f['max_welfare_gain']} ticks at toll {f['best_toll']}; {f['total_toll_revenue']} "
+                 f"ticks of toll revenue over the sweep",
+            res.rows, ["toll", "waiting_cost"], "welfare")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -247,14 +266,17 @@ PHASE9: Tuple[Callable[[], Spec], ...] = (lemons,)
 PHASE10: Tuple[Callable[[], Spec], ...] = (reputation,)
 PHASE11: Tuple[Callable[[], Spec], ...] = (switching_cost,)
 PHASE12: Tuple[Callable[[], Spec], ...] = (critical_mass,)
+PHASE13: Tuple[Callable[[], Spec], ...] = (congestion,)
 
 
 def build(include_phase7: bool = False, include_phase8: bool = False,
           include_phase9: bool = False, include_phase10: bool = False,
-          include_phase11: bool = False, include_phase12: bool = False) -> Report:
+          include_phase11: bool = False, include_phase12: bool = False,
+          include_phase13: bool = False) -> Report:
     runs = (EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
             + (PHASE9 if include_phase9 else ()) + (PHASE10 if include_phase10 else ())
-            + (PHASE11 if include_phase11 else ()) + (PHASE12 if include_phase12 else ()))
+            + (PHASE11 if include_phase11 else ()) + (PHASE12 if include_phase12 else ())
+            + (PHASE13 if include_phase13 else ()))
     specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
@@ -271,6 +293,8 @@ def build(include_phase7: bool = False, include_phase8: bool = False,
         title += " plus Phase 11 switching costs"
     if include_phase12:
         title += " plus Phase 12 critical mass"
+    if include_phase13:
+        title += " plus Phase 13 congestion"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -294,9 +318,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="append the Phase 11 switching-cost experiment as one more section")
     ap.add_argument("--include-phase12", action="store_true",
                     help="append the Phase 12 critical-mass experiment as one more section")
+    ap.add_argument("--include-phase13", action="store_true",
+                    help="append the Phase 13 congestion experiment as one more section")
     a = ap.parse_args(argv)
     rep = build(a.include_phase7, a.include_phase8, a.include_phase9, a.include_phase10,
-                a.include_phase11, a.include_phase12)
+                a.include_phase11, a.include_phase12, a.include_phase13)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))

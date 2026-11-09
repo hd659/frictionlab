@@ -1,4 +1,4 @@
-"""fl-054 / fl-057 / fl-060 / fl-066: `phase5_summary_report.py --include-phase8/9/10/12`.
+"""fl-054 / fl-057 / fl-060 / fl-066 / fl-069: `phase5_summary_report.py --include-phase8..13`.
 
 The default five-section report and the `--include-phase7/8/9` reports are frozen
 by sha256, so no later flag can perturb any of them.
@@ -245,3 +245,59 @@ def test_phase12_section_matches_run_from_config(ex, reports12, tmp_path):
     assert f"from seed {direct.findings['tipping_seed']} " in headline
     assert ex.main(["--out", str(tmp_path), *P12]) == 0
     assert (tmp_path / "phase5_summary.html").read_bytes() == reports12[P12]
+
+
+# ---------------------------------------------------------------- fl-069: --include-phase13
+# sha256 of --include-phase12 and of --include-phase7 ... --include-phase12 (fl-066)
+PHASE12_SHA256 = "82ed9961472dedb8568536455410e23e4767a7018ff58d3f649a41a13ee3976c"
+PHASE7_12_SHA256 = "cf80baea7cb31353d9b70502eae35b97fd87dc20845ba377e6c4fdafc5686a3c"
+CG_TITLE = "congestion (seed 68)"
+ALL12 = ALL11 + P12
+P13 = ("--include-phase13",)
+
+
+@pytest.fixture(scope="module")
+def reports13(ex, reports12, tmp_path_factory):
+    out = dict(reports12)
+    for flags in (P13, ALL12 + P13):
+        d = tmp_path_factory.mktemp("summary13")
+        assert ex.main(["--out", str(d), *flags]) == 0
+        out[flags] = (d / "phase5_summary.html").read_bytes()
+    return out
+
+
+def test_phase12_reports_are_unchanged(reports13):
+    assert hashlib.sha256(reports13[()]).hexdigest() == DEFAULT_SHA256
+    assert len(titles(reports13[()])) == 5
+    assert hashlib.sha256(reports13[P12]).hexdigest() == PHASE12_SHA256
+    assert hashlib.sha256(reports13[ALL12]).hexdigest() == PHASE7_12_SHA256
+    assert CG_TITLE not in titles(reports13[ALL12])
+
+
+def test_phase13_flag_adds_exactly_one_section(reports13):
+    assert titles(reports13[P13]) == titles(reports13[()]) + [CG_TITLE]
+    assert titles(reports13[ALL12 + P13]) == titles(reports13[ALL12]) + [CG_TITLE]
+
+
+def test_phase13_section_is_offline_and_carries_headline(reports13):
+    data = reports13[P13]
+    assert not re.search(r"https?://", data.decode("utf-8"), re.I)
+    root = parse(data)
+    header = "".join(root.find("body/header").itertext())
+    assert "individual threshold 5 vs social 0 at waiting cost 2" in header
+    assert "optimal toll 17 (analytic 17)" in header
+    assert "Phase 13 congestion" in "".join(root.find("head/title").itertext())
+    sec = [s for s in root.iter("section") if s.get("class") == "experiment"][-1]
+    assert "Sweep: welfare by toll, waiting_cost" in "".join(sec.itertext())
+    assert sec.find("p").get("class") == "headline"
+
+
+def test_phase13_section_matches_run_from_config(ex, reports13, tmp_path):
+    from frictionlab.experiments import run_from_config
+    res, headline, rows, by, metric = ex.congestion()
+    direct = run_from_config(EXAMPLES / "configs" / "congestion_small.json")
+    assert rows == direct.rows and res.findings == direct.findings
+    assert by == ["toll", "waiting_cost"] and metric == "welfare"
+    assert f"optimal toll {direct.findings['bisected_toll']} " in headline
+    assert ex.main(["--out", str(tmp_path), *P13]) == 0
+    assert (tmp_path / "phase5_summary.html").read_bytes() == reports13[P13]

@@ -150,6 +150,19 @@ to the summary report as one more section.
 `examples/phase5_summary_report.py --include-phase12` adds the critical-mass experiment
 to the summary report as one more section.
 
+## Phase 13: congestion and queueing costs
+
+- [Phase 13: congestion and queueing costs](phase13-congestion.md) covers why
+  self-interested arrivals over-join an observable queue, why a toll equal to the
+  waiting cost they impose on later arrivals turns a congestion friction into a transfer
+  and restores the social threshold, and how the optimal toll relates to the Coase
+  threshold and the adoption cost.
+  Config: `examples/configs/congestion_small.json`.
+  Example: `examples/phase13_congestion.py`.
+
+`examples/phase5_summary_report.py --include-phase13` adds the congestion experiment to
+the summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.
