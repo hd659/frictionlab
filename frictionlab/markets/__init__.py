@@ -35,6 +35,9 @@
 - `PlatformMarket` (fl-064): two-sided platform with integer-tick standalone values,
   cross-side benefits and fees (negative = subsidy); myopic join / leave dynamics with
   a one-time `AdoptionCost`, stopping at a fixed point or 2-cycle (cold start).
+- `QueueMarket` (fl-067): single-server observable queue (Naor); Bernoulli arrivals
+  and services on separate seeded streams, customers join iff reward - toll - expected
+  waiting cost >= 0, with a `CongestionCost` toll and per-step waiting charge.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -55,6 +58,7 @@ from .reputation import (
 )
 from .switching import SWITCH_SINK_ID, SWITCHING, SwitchingMarket, SwitchingRound
 from .platform import PLATFORM, PLATFORM_ID, Flow, PlatformMarket, PlatformRound
+from .queue_market import QUEUE, Arrival, Customer, QueueMarket, ceil_div
 
 __all__ = [
     # constants
@@ -81,4 +85,6 @@ __all__ = [
     "SWITCH_SINK_ID", "SWITCHING", "SwitchingMarket", "SwitchingRound",
     # network effects and cold start
     "PLATFORM", "PLATFORM_ID", "Flow", "PlatformMarket", "PlatformRound",
+    # congestion and queueing
+    "QUEUE", "Arrival", "Customer", "QueueMarket", "ceil_div",
 ]

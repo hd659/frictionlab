@@ -38,7 +38,7 @@ from .pnl import (
     InfoPnL, LemonsPnL, MiddlemanPnL, PnLBreakdown, breakdown_by, info_pnl, lemons_pnl,
     ReputationPnL, SwitchingPnL, consumer_surplus, middleman_pnl, pnl_breakdown,
     reputation_pnl, switching_pnl, total, MemberSurplus, PlatformPnL, member_surplus,
-    platform_pnl,
+    platform_pnl, OperatorPnL, QueueSurplus, operator_pnl, queue_surplus,
 )
 from .report import Report, frictionlab_version, write_report
 from .report_sections import (
@@ -67,6 +67,7 @@ __all__ = [
     "ReputationPnL", "reputation_pnl",
     "SwitchingPnL", "consumer_surplus", "switching_pnl",
     "MemberSurplus", "PlatformPnL", "member_surplus", "platform_pnl",
+    "OperatorPnL", "QueueSurplus", "operator_pnl", "queue_surplus",
     "MiddlemanPnL", "PnLBreakdown", "breakdown_by", "middleman_pnl", "pnl_breakdown", "total",
     "QuoteRecorder", "SpreadStats", "markout_pnl", "pnl_by_agent", "pnl_by_type",
     "spread_stats", "volume_between",

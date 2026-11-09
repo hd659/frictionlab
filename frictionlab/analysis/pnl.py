@@ -26,6 +26,8 @@ Venue-specific splits, each exact in ticks against the ledger:
 - `platform_pnl` (fl-064): fee revenue - subsidy outlay (negative fees plus seeded
   adoption paid) = platform cash change; `member_surplus` splits each member into
   standalone value + cross-side gain - net fees - adoption cost paid.
+- `queue_surplus` (fl-067): customer reward (if served) - toll - waiting cost = net
+  surplus; `operator_pnl` gives the queue operator's toll revenue (= toll sink cash).
 """
 from __future__ import annotations
 
@@ -166,6 +168,50 @@ def member_surplus(market) -> Dict[int, MemberSurplus]:
             adopt[f.member] += f.amount
     return {m: MemberSurplus(u, x, fees[m], adopt[m])
             for m, (u, x) in market.accrued.items()}
+
+
+@dataclass(frozen=True)
+class QueueSurplus:
+    """Queue customer surplus: `net = reward - toll - waiting` in ticks."""
+    reward: int = 0            # R if served by the horizon, else 0
+    toll: int = 0              # admission toll paid
+    waiting: int = 0           # waiting cost paid over steps in system
+    steps: int = 0             # steps spent in the system
+
+    @property
+    def net(self) -> int:
+        return self.reward - self.toll - self.waiting
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"reward": self.reward, "toll": self.toll, "waiting": self.waiting,
+                "steps": self.steps, "net": self.net}
+
+
+@dataclass(frozen=True)
+class OperatorPnL:
+    """Queue operator PnL in ticks: `net = toll_revenue` (no service cost modelled)."""
+    toll_revenue: int = 0
+    joins: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.toll_revenue
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"toll_revenue": self.toll_revenue, "joins": self.joins, "net": self.net}
+
+
+def queue_surplus(market) -> Dict[int, QueueSurplus]:
+    """Per-customer `QueueSurplus` of a fl-067 `QueueMarket` run (joiners only)."""
+    cc = market.congestion
+    return {cid: QueueSurplus(market.reward if c.served else 0, cc.tolls.get(cid, 0),
+                              cc.waits.get(cid, 0), c.steps)
+            for cid, c in sorted(market.customers.items())}
+
+
+def operator_pnl(market) -> OperatorPnL:
+    """Toll revenue of a fl-067 `QueueMarket` run."""
+    return OperatorPnL(market.congestion.toll_revenue, market.joins)
 
 
 # Venue-specific splits live in `venue_pnl` (imported last: it needs the names above).
