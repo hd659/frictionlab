@@ -1,0 +1,20 @@
+{
+  "experiment": "menu_cost",
+  "master_seed": 71,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "menu_costs": [0, 2, 8, 32],
+    "inflations": [1, 2, 3],
+    "n_sellers": 2,
+    "start_price": 1000,
+    "horizon": 120,
+    "curvature": 1,
+    "base_profit": 200,
+    "shocks": [0],
+    "probe_inflation": 2,
+    "rigidity_bps": 5000
+  }
+}

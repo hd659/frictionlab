@@ -73,6 +73,11 @@
   waiting paid, customer surplus, welfare and its change against the zero-toll twin.
   `naor_individual_threshold` / `naor_social_threshold` / `naor_optimal_toll` are the
   exact Naor thresholds and toll, and `find_congestion_toll` bisects for the toll.
+- `menu_cost` (Phase 14): the fl-070 `MenuCostMarket` swept over menu_cost x inflation
+  with every seller at the analytic (S, s) band; adjustment frequency, mean gap and
+  adjustment size, misalignment loss, menu cost paid, net PnL and the welfare change
+  against the flexible zero-cost twin. `optimal_ss_band` / `adjustment_frequency` are
+  exact (`Fraction`) and `find_rigidity_threshold` bisects for the rigidity menu cost.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -134,6 +139,11 @@ from .congestion import (
     CongestionToll, Config as CongestionConfig, QueueCell, find_congestion_toll,
     naor_individual_threshold, naor_optimal_toll, naor_social_threshold, queue_metrics,
     run_congestion, run_queue_grid, welfare_per_step,
+)
+from .menu_cost import (
+    Config as MenuCostConfig, MenuCell, RigidityThreshold, adjustment_frequency,
+    find_rigidity_threshold, menu_metrics, optimal_ss_band, per_step_loss, run_menu_cost,
+    run_menu_grid,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -203,6 +213,10 @@ __all__ = [
     "CongestionConfig", "CongestionToll", "QueueCell", "find_congestion_toll",
     "naor_individual_threshold", "naor_optimal_toll", "naor_social_threshold", "queue_metrics",
     "run_congestion", "run_queue_grid", "welfare_per_step",
+    # 14.2 menu costs and price rigidity
+    "MenuCell", "MenuCostConfig", "RigidityThreshold", "adjustment_frequency",
+    "find_rigidity_threshold", "menu_metrics", "optimal_ss_band", "per_step_loss",
+    "run_menu_cost", "run_menu_grid",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",
