@@ -13,8 +13,7 @@ from ..config.schema import ConfigError, ExperimentConfig, Param, load_config, v
 from . import (adverse_selection, coase, decision_cost, fee_wars, funding_arb, grossman_stiglitz,
                intermediation, lemons, reputation, search_cost, switching_cost)
 from .base import ExperimentResult
-from .two_venue import MarketConfig
-Runner = Callable[[Dict[str, Any], int, int, int], ExperimentResult]; ConfigLike = Union[str, Path, Mapping[str, Any], ExperimentConfig]
+from .two_venue import MarketConfig; Runner = Callable[[Dict[str, Any], int, int, int], ExperimentResult]; ConfigLike = Union[str, Path, Mapping[str, Any], ExperimentConfig]
 
 
 class UnknownExperimentError(ConfigError, LookupError):
@@ -115,7 +114,7 @@ def run_from_config(config: ConfigLike) -> ExperimentResult:
     return replace(res, config=cfg.to_dict())
 
 
-# ---- Phase 5 experiments; Phase 7 search; Phase 8 information; Phase 9-14
+# ---- Phase 5 experiments; Phase 7 search; Phase 8 information; Phase 9-15
 def _build(cls: type, p: Mapping[str, Any], **extra: Any) -> Any:
     names = {f.name for f in fields(cls)}
     return cls(**{**{k: tuple(v) if isinstance(v, list) else v for k, v in p.items() if k in names}, **extra})
@@ -245,6 +244,7 @@ register_experiment(
     master_seed=62, doc="mean switching cost x target share: Klemperer lock-in and harvest markup")
 for _n, _seed, _doc in (("critical_mass", 65, "adoption cost x seeded members: critical mass and cold start"),
                         ("congestion", 68, "toll x waiting cost: Naor congestion and the optimal toll"),
-                        ("menu_cost", 71, "menu cost x inflation: (S, s) bands and price rigidity")):
+                        ("menu_cost", 71, "menu cost x inflation: (S, s) bands and price rigidity"),
+                        ("holdup", 74, "contracting cost x seller weight: hold-up and costly contracting")):
     _m = importlib.import_module(f".{_n}", __package__)   # the package attr may be a same-named function
     register_experiment(_n, _m.registry_runner, _m.PARAM_SCHEMA, _m.defaults(), small=_m.SMALL, master_seed=_seed, doc=_doc)

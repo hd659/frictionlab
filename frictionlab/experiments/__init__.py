@@ -78,6 +78,12 @@
   adjustment size, misalignment loss, menu cost paid, net PnL and the welfare change
   against the flexible zero-cost twin. `optimal_ss_band` / `adjustment_frequency` are
   exact (`Fraction`) and `find_rigidity_threshold` bisects for the rigidity menu cost.
+- `holdup` (Phase 15): the fl-073 `HoldupMarket` swept over contracting_cost x
+  seller_weight_bps with every seller a `SpecificInvestor`; contracting rate, investment
+  vs first best, underinvestment gap, mean price, contracting paid, seller / buyer surplus,
+  surplus share and the welfare change against the zero-cost twin. `holdup_investment` /
+  `first_best_investment` / `max_contracting_cost` are exact integer analytics and
+  `find_contracting_threshold` bisects for the contracting-collapse cost.
 - `registry` (Phase 6): name -> runner, param schema and defaults for every
   experiment; `run_from_config` turns a JSON/YAML config into a result.
 
@@ -144,6 +150,11 @@ from .menu_cost import (
     Config as MenuCostConfig, MenuCell, RigidityThreshold, adjustment_frequency,
     find_rigidity_threshold, menu_metrics, optimal_ss_band, per_step_loss, run_menu_cost,
     run_menu_grid,
+)
+from .holdup import (
+    Config as HoldupConfig, ContractingThreshold, HoldupCell, find_contracting_threshold,
+    first_best_investment, holdup_investment, holdup_metrics, holdup_surplus_loss,
+    max_contracting_cost, run_holdup, run_holdup_grid,
 )
 from .registry import (
     Experiment, UnknownExperimentError, experiment, get_experiment, list_experiments,
@@ -217,6 +228,10 @@ __all__ = [
     "MenuCell", "MenuCostConfig", "RigidityThreshold", "adjustment_frequency",
     "find_rigidity_threshold", "menu_metrics", "optimal_ss_band", "per_step_loss",
     "run_menu_cost", "run_menu_grid",
+    # 15.2 hold-up and costly contracting
+    "ContractingThreshold", "HoldupCell", "HoldupConfig", "find_contracting_threshold",
+    "first_best_investment", "holdup_investment", "holdup_metrics", "holdup_surplus_loss",
+    "max_contracting_cost", "run_holdup", "run_holdup_grid",
     # registry
     "Experiment", "UnknownExperimentError", "experiment", "get_experiment", "list_experiments",
     "register_experiment", "resolve_config", "run_from_config", "unregister_experiment",

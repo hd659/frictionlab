@@ -1,0 +1,21 @@
+{
+  "experiment": "holdup",
+  "master_seed": 74,
+  "n_workers": 1,
+  "replicates": 1,
+  "small": true,
+  "output": null,
+  "params": {
+    "contracting_costs": [0, 2, 6, 10],
+    "seller_weights": [5000, 7500, 10000],
+    "investment_costs": [0, 6, 14, 24, 36, 50],
+    "buyer_values": [40, 58, 74, 88, 98, 104],
+    "outside_value": 30,
+    "n_pairs": 2,
+    "n_buyers": 4,
+    "rounds": 12,
+    "value_noise": [0],
+    "probe_weight": 5000,
+    "collapse_bps": 5000
+  }
+}
