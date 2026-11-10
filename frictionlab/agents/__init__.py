@@ -16,6 +16,8 @@ acquire share below a target, then harvests at rival price + the minimum switchi
 cost of its locked-in customers (or posts marginal cost in Bertrand mode).
 The `SsPricer` (fl-070) keeps its posted price while |p - p*| <= band and otherwise
 resets to its target plus the drift over the band half-life (Sheshinski-Weiss (S, s)).
+The `SpecificInvestor` (fl-073) picks a relationship-specific investment that maximizes
+its bargained share net of sunk cost (hold-up) and contracts only when strictly better.
 """
 from ..costs.information import SignalSource
 from .base import (
@@ -37,6 +39,9 @@ from .middleman import (
 from .reputation_seller import ReputationSeller, switch_round
 from .lockin_seller import ACQUIRE, BERTRAND, HARVEST, LockinSeller, harvest_price
 from .ss_pricer import SsPricer, half_life, overshoot
+from .specific_investor import (
+    SpecificInvestor, buyer_share, first_best_level, holdup_level, seller_share,
+)
 from .noise import NoiseTrader, make_noise_population, order_flow
 from .zero_intelligence import ZICTrader, ZITrader, ZIUTrader, make_zi_population
 
@@ -58,5 +63,6 @@ __all__ = [
     "ReputationSeller", "switch_round",
     "ACQUIRE", "BERTRAND", "HARVEST", "LockinSeller", "harvest_price",
     "SsPricer", "half_life", "overshoot",
+    "SpecificInvestor", "buyer_share", "first_best_level", "holdup_level", "seller_share",
     "ZICTrader", "ZITrader", "ZIUTrader", "make_zi_population",
 ]

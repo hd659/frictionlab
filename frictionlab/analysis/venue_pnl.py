@@ -1,4 +1,4 @@
-"""Venue-specific PnL splits (fl-049 .. fl-061), each exact in ticks against the ledger.
+"""Venue-specific PnL splits (fl-049 .. fl-061, fl-073), each exact in ticks against the ledger.
 
 Split out of `analysis.pnl` (which re-exports every name here) to keep both
 modules under the hygiene line ceiling. See the `analysis.pnl` docstring for
@@ -173,3 +173,56 @@ def middleman_pnl(market) -> MiddlemanPnL:
     hold = sum(row[2] for row in market.carries)
     spoil = sum(row[3] for row in market.carries)
     return MiddlemanPnL(asks - (bids - held), hold, spoil, len(fills) - sold, sold, held)
+
+
+@dataclass(frozen=True)
+class HoldupPnL:
+    """Hold-up seller PnL: `net = revenue - investment - contracting` in ticks."""
+    revenue: int = 0           # bargained (or contracted) prices received
+    investment: int = 0        # sunk relationship-specific investment cost
+    contracting: int = 0       # contract-writing cost paid to the contract sink
+    trades: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.revenue - self.investment - self.contracting
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"revenue": self.revenue, "investment": self.investment,
+                "contracting": self.contracting, "trades": self.trades, "net": self.net}
+
+
+@dataclass(frozen=True)
+class HoldupBuyerSurplus:
+    """Hold-up buyer surplus: `net = value - price` in ticks."""
+    value: int = 0             # buyer value received
+    price: int = 0             # prices paid
+    trades: int = 0
+
+    @property
+    def net(self) -> int:
+        return self.value - self.price
+
+    def as_dict(self) -> Dict[str, int]:
+        return {"value": self.value, "price": self.price, "trades": self.trades,
+                "net": self.net}
+
+
+def holdup_pnl(market) -> Dict[int, HoldupPnL]:
+    """Per-seller `HoldupPnL` of a fl-073 `HoldupMarket` run."""
+    out = {}
+    for s in market.sellers:
+        rows = [r for r in market.log if r.seller == s.agent_id]
+        out[s.agent_id] = HoldupPnL(sum(r.price for r in rows), sum(r.investment for r in rows),
+                                    sum(r.contract_cost for r in rows), len(rows))
+    return out
+
+
+def holdup_buyer_surplus(market) -> Dict[int, HoldupBuyerSurplus]:
+    """Per-buyer `HoldupBuyerSurplus` of a fl-073 `HoldupMarket` run."""
+    out = {}
+    for b in market.buyers:
+        rows = [r for r in market.log if r.buyer == b]
+        out[b] = HoldupBuyerSurplus(sum(r.value for r in rows), sum(r.price for r in rows),
+                                    len(rows))
+    return out

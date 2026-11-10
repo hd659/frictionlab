@@ -29,6 +29,7 @@ Venue-specific splits, each exact in ticks against the ledger:
 - `queue_surplus` (fl-067): customer reward (if served) - toll - waiting cost = net
   surplus; `operator_pnl` gives the queue operator's toll revenue (= toll sink cash).
 - `menu_pnl` (fl-070): seller frictionless profit - misalignment loss - menu cost = cash.
+- `holdup_pnl` / `holdup_buyer_surplus` (fl-073): revenue - investment - contracting; value - price.
 """
 from __future__ import annotations
 
@@ -242,8 +243,8 @@ def menu_pnl(market) -> Dict[int, MenuPnL]:
     return out
 
 
-# Venue-specific splits live in `venue_pnl` (imported last: it needs the names above).
-from .venue_pnl import (  # noqa: E402
-    InfoPnL, LemonsPnL, MiddlemanPnL, ReputationPnL, SwitchingPnL, consumer_surplus, info_pnl,
-    lemons_pnl, middleman_pnl, reputation_pnl, switching_pnl,
+from .venue_pnl import (  # noqa: E402  (imported last: venue_pnl needs the names above)
+    HoldupBuyerSurplus, HoldupPnL, InfoPnL, LemonsPnL, MiddlemanPnL, ReputationPnL, SwitchingPnL,
+    consumer_surplus, holdup_buyer_surplus, holdup_pnl, info_pnl, lemons_pnl, middleman_pnl,
+    reputation_pnl, switching_pnl,
 )

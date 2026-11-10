@@ -22,6 +22,9 @@ admission toll (to `TOLL_SINK_ID`) and a per-step waiting cost (to `WAIT_SINK_ID
 
 Menu cost (fl-070): `MenuCost(cost)` charges a seller an integer-tick cost per change of
 its posted price in a `MenuCostMarket`, routed to `MENU_SINK_ID`.
+
+Contracting cost (fl-073): `ContractingCost(cost)` charges the ex-ante cost of writing a
+complete contract in a `HoldupMarket`, routed to `CONTRACT_SINK_ID`.
 """
 from .base import BOTH, TAKER_ONLY, CostModel, Fill, Role, fills_of, to_frac, venue_round
 from .fees import BPS, FixedCost, HalfSpreadCost, LatencyCost, MakerTakerFee
@@ -34,6 +37,7 @@ from .certification import CERT_SINK_ID, CertificationPolicy
 from .adoption import ADOPTION_SINK_ID, AdoptionCost
 from .congestion import TOLL_SINK_ID, WAIT_SINK_ID, CongestionCost
 from .menu import MENU_SINK_ID, MenuCost
+from .contracting import CONTRACT_SINK_ID, ContractingCost
 
 __all__ = [
     "BOTH", "BPS", "TAKER_ONLY",
@@ -47,4 +51,5 @@ __all__ = [
     "ADOPTION_SINK_ID", "AdoptionCost",
     "TOLL_SINK_ID", "WAIT_SINK_ID", "CongestionCost",
     "MENU_SINK_ID", "MenuCost",
+    "CONTRACT_SINK_ID", "ContractingCost",
 ]

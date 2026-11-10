@@ -41,6 +41,9 @@
 - `MenuCostMarket` (fl-070): repeated posted-price market with drifting integer targets;
   `SsPricer`s keep their price inside an (S, s) band and pay a `MenuCost` per change,
   losing curvature * (p - p*)^2 per step while misaligned (nominal rigidity).
+- `HoldupMarket` (fl-073): bilateral buyer-seller pairs trading a relationship-specific
+  good; `SpecificInvestor`s sink an investment, then split the quasi-rent over the outside
+  value by integer Nash bargaining (hold-up) or pay a `ContractingCost` to fix the first best.
 - `amm_v3_legacy`: deprecated shim re-exporting `amm_cl` (warns on import).
 """
 from .amm_cl import (
@@ -63,6 +66,7 @@ from .switching import SWITCH_SINK_ID, SWITCHING, SwitchingMarket, SwitchingRoun
 from .platform import PLATFORM, PLATFORM_ID, Flow, PlatformMarket, PlatformRound
 from .queue_market import QUEUE, Arrival, Customer, QueueMarket, ceil_div
 from .menu_cost import DEMAND_ID, MENU, MenuCostMarket, MenuStep
+from .holdup import CONTRACT, HOLDUP, INVEST_SINK_ID, VALUE_ID, HoldupMarket, HoldupTrade
 
 __all__ = [
     # constants
@@ -93,4 +97,6 @@ __all__ = [
     "QUEUE", "Arrival", "Customer", "QueueMarket", "ceil_div",
     # menu costs and nominal rigidity
     "DEMAND_ID", "MENU", "MenuCostMarket", "MenuStep",
+    # hold-up and costly contracting
+    "CONTRACT", "HOLDUP", "INVEST_SINK_ID", "VALUE_ID", "HoldupMarket", "HoldupTrade",
 ]
