@@ -163,6 +163,19 @@ to the summary report as one more section.
 `examples/phase5_summary_report.py --include-phase13` adds the congestion experiment to
 the summary report as one more section.
 
+## Phase 14: menu costs and nominal price rigidity
+
+- [Phase 14: menu costs and nominal price rigidity](phase14-menu-cost.md) covers why a
+  fixed adjustment cost produces an (S,s) inaction band rather than partial adjustment,
+  why a second-order misalignment loss against a first-order menu cost lets small
+  frictions buy large rigidity, and how the rigidity threshold relates to the Coase
+  threshold and the decision-cost break-even.
+  Config: `examples/configs/menu_cost_small.json`.
+  Example: `examples/phase14_menu_cost.py`.
+
+`examples/phase5_summary_report.py --include-phase14` adds the menu-cost experiment to
+the summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.

@@ -1,4 +1,4 @@
-"""fl-054 / fl-057 / fl-060 / fl-066 / fl-069: `phase5_summary_report.py --include-phase8..13`.
+"""fl-054 / fl-057 / fl-060 / fl-066 / fl-069 / fl-072: `phase5_summary_report.py --include-phase8..14`.
 
 The default five-section report and the `--include-phase7/8/9` reports are frozen
 by sha256, so no later flag can perturb any of them.
@@ -301,3 +301,60 @@ def test_phase13_section_matches_run_from_config(ex, reports13, tmp_path):
     assert f"optimal toll {direct.findings['bisected_toll']} " in headline
     assert ex.main(["--out", str(tmp_path), *P13]) == 0
     assert (tmp_path / "phase5_summary.html").read_bytes() == reports13[P13]
+
+
+# ---------------------------------------------------------------- fl-072: --include-phase14
+# sha256 of --include-phase13 and of --include-phase7 ... --include-phase13 (fl-069)
+PHASE13_SHA256 = "9286f57234711868a6f288604651251c5f58f793ebaa43677880288cd784b9d5"
+PHASE7_13_SHA256 = "6dd363f5031e1d058258ec6a9e9cb49fe429e67edb51a8ca5987dd59fee1a7af"
+MC_TITLE = "menu_cost (seed 71)"
+ALL13 = ALL12 + P13
+P14 = ("--include-phase14",)
+
+
+@pytest.fixture(scope="module")
+def reports14(ex, reports13, tmp_path_factory):
+    out = dict(reports13)
+    for flags in (P14, ALL13 + P14):
+        d = tmp_path_factory.mktemp("summary14")
+        assert ex.main(["--out", str(d), *flags]) == 0
+        out[flags] = (d / "phase5_summary.html").read_bytes()
+    return out
+
+
+def test_phase13_reports_are_unchanged(reports14):
+    assert hashlib.sha256(reports14[()]).hexdigest() == DEFAULT_SHA256
+    assert len(titles(reports14[()])) == 5
+    assert hashlib.sha256(reports14[P13]).hexdigest() == PHASE13_SHA256
+    assert hashlib.sha256(reports14[ALL13]).hexdigest() == PHASE7_13_SHA256
+    assert MC_TITLE not in titles(reports14[ALL13])
+
+
+def test_phase14_flag_adds_exactly_one_section(reports14):
+    assert titles(reports14[P14]) == titles(reports14[()]) + [MC_TITLE]
+    assert titles(reports14[ALL13 + P14]) == titles(reports14[ALL13]) + [MC_TITLE]
+
+
+def test_phase14_section_is_offline_and_carries_headline(reports14):
+    data = reports14[P14]
+    assert not re.search(r"https?://", data.decode("utf-8"), re.I)
+    root = parse(data)
+    header = "".join(root.find("body/header").itertext())
+    assert "(S,s) bands up to 4 ticks cut adjustment frequency to 0.2" in header
+    assert "rigidity threshold 17 ticks (analytic 17, band 4) at inflation 2" in header
+    assert "Phase 14 menu costs" in "".join(root.find("head/title").itertext())
+    sec = [s for s in root.iter("section") if s.get("class") == "experiment"][-1]
+    assert ("Sweep: adjustment_frequency by menu_cost, inflation_ticks_per_step"
+            in "".join(sec.itertext()))
+    assert sec.find("p").get("class") == "headline"
+
+
+def test_phase14_section_matches_run_from_config(ex, reports14, tmp_path):
+    from frictionlab.experiments import run_from_config
+    res, headline, rows, by, metric = ex.menu_cost()
+    direct = run_from_config(EXAMPLES / "configs" / "menu_cost_small.json")
+    assert rows == direct.rows and res.findings == direct.findings
+    assert by == ["menu_cost", "inflation_ticks_per_step"] and metric == "adjustment_frequency"
+    assert f"rigidity threshold {direct.findings['bisected_threshold']} ticks" in headline
+    assert ex.main(["--out", str(tmp_path), *P14]) == 0
+    assert (tmp_path / "phase5_summary.html").read_bytes() == reports14[P14]

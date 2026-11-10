@@ -39,10 +39,15 @@ optional section. The default and `--include-phase7/8/9/10/11` outputs are uncha
 optional section. The default and `--include-phase7` .. `--include-phase12` outputs are
 unchanged by it.
 
+`--include-phase14` appends the fl-071 menu-cost experiment
+(`examples/configs/menu_cost_small.json`) as one more section, after every earlier
+optional section. The default and `--include-phase7` .. `--include-phase13` outputs are
+unchanged by it.
+
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
                                              [--include-phase9] [--include-phase10]
                                              [--include-phase11] [--include-phase12]
-                                             [--include-phase13]
+                                             [--include-phase13] [--include-phase14]
 """
 from __future__ import annotations
 
@@ -254,6 +259,19 @@ def congestion() -> Spec:
             res.rows, ["toll", "waiting_cost"], "welfare")
 
 
+def menu_cost() -> Spec:
+    from frictionlab.experiments import run_from_config
+    raw = json.loads((HERE / "configs" / "menu_cost_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    return (res, f"(S,s) bands up to {f['max_band']} ticks cut adjustment frequency to "
+                 f"{f['min_adjustment_frequency']:g} of seller-steps; rigidity threshold "
+                 f"{f['bisected_threshold']} ticks (analytic {f['analytic_threshold']}, band "
+                 f"{f['threshold_band']}) at inflation {f['probe_inflation']}; "
+                 f"{f['total_menu_cost_paid']} ticks paid to the menu sink over the sweep",
+            res.rows, ["menu_cost", "inflation_ticks_per_step"], "adjustment_frequency")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -267,16 +285,17 @@ PHASE10: Tuple[Callable[[], Spec], ...] = (reputation,)
 PHASE11: Tuple[Callable[[], Spec], ...] = (switching_cost,)
 PHASE12: Tuple[Callable[[], Spec], ...] = (critical_mass,)
 PHASE13: Tuple[Callable[[], Spec], ...] = (congestion,)
+PHASE14: Tuple[Callable[[], Spec], ...] = (menu_cost,)
 
 
 def build(include_phase7: bool = False, include_phase8: bool = False,
           include_phase9: bool = False, include_phase10: bool = False,
           include_phase11: bool = False, include_phase12: bool = False,
-          include_phase13: bool = False) -> Report:
+          include_phase13: bool = False, include_phase14: bool = False) -> Report:
     runs = (EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
             + (PHASE9 if include_phase9 else ()) + (PHASE10 if include_phase10 else ())
             + (PHASE11 if include_phase11 else ()) + (PHASE12 if include_phase12 else ())
-            + (PHASE13 if include_phase13 else ()))
+            + (PHASE13 if include_phase13 else ()) + (PHASE14 if include_phase14 else ()))
     specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
@@ -295,6 +314,8 @@ def build(include_phase7: bool = False, include_phase8: bool = False,
         title += " plus Phase 12 critical mass"
     if include_phase13:
         title += " plus Phase 13 congestion"
+    if include_phase14:
+        title += " plus Phase 14 menu costs"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -320,9 +341,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="append the Phase 12 critical-mass experiment as one more section")
     ap.add_argument("--include-phase13", action="store_true",
                     help="append the Phase 13 congestion experiment as one more section")
+    ap.add_argument("--include-phase14", action="store_true",
+                    help="append the Phase 14 menu-cost experiment as one more section")
     a = ap.parse_args(argv)
     rep = build(a.include_phase7, a.include_phase8, a.include_phase9, a.include_phase10,
-                a.include_phase11, a.include_phase12, a.include_phase13)
+                a.include_phase11, a.include_phase12, a.include_phase13, a.include_phase14)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))
