@@ -176,6 +176,19 @@ the summary report as one more section.
 `examples/phase5_summary_report.py --include-phase14` adds the menu-cost experiment to
 the summary report as one more section.
 
+## Phase 15: hold-up and costly contracting
+
+- [Phase 15: hold-up, underinvestment and costly contracting](phase15-holdup.md) covers why
+  ex-post bargaining over a sunk specific investment lets the investor capture only its
+  weight of the marginal return so it underinvests, why a contract is worth writing
+  exactly up to the surplus it recovers, and how the contracting threshold relates to the
+  Coase, lock-in and rigidity thresholds as frictions that pick markets, contracts or nothing.
+  Config: `examples/configs/holdup_small.json`.
+  Example: `examples/phase15_holdup.py`.
+
+`examples/phase5_summary_report.py --include-phase15` adds the hold-up experiment to the
+summary report as one more section.
+
 ## Conventions used across the write-ups
 
 - All prices, cash and frictions are integer ticks, and fee rates are integer basis points.

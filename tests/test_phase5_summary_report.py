@@ -1,4 +1,4 @@
-"""fl-054 / fl-057 / fl-060 / fl-066 / fl-069 / fl-072: `phase5_summary_report.py --include-phase8..14`.
+"""fl-054 / fl-057 / fl-060 / fl-066 / fl-069 / fl-072 / fl-075: `phase5_summary_report.py --include-phase8..15`.
 
 The default five-section report and the `--include-phase7/8/9` reports are frozen
 by sha256, so no later flag can perturb any of them.
@@ -358,3 +358,59 @@ def test_phase14_section_matches_run_from_config(ex, reports14, tmp_path):
     assert f"rigidity threshold {direct.findings['bisected_threshold']} ticks" in headline
     assert ex.main(["--out", str(tmp_path), *P14]) == 0
     assert (tmp_path / "phase5_summary.html").read_bytes() == reports14[P14]
+
+
+# ---------------------------------------------------------------- fl-075: --include-phase15
+# sha256 of --include-phase14 and of --include-phase7 ... --include-phase14 (fl-072)
+PHASE14_SHA256 = "ccc0e6c70d72ef64d6a70edb5de93aafd54cac5e418796006546bf113e7c986a"
+PHASE7_14_SHA256 = "7c745ed802ac02c8749f6a10dd67cb551192e971296b022110b27d708b3074da"
+HU_TITLE = "holdup (seed 74)"
+ALL14 = ALL13 + P14
+P15 = ("--include-phase15",)
+
+
+@pytest.fixture(scope="module")
+def reports15(ex, reports14, tmp_path_factory):
+    out = dict(reports14)
+    for flags in (P15, ALL14 + P15):
+        d = tmp_path_factory.mktemp("summary15")
+        assert ex.main(["--out", str(d), *flags]) == 0
+        out[flags] = (d / "phase5_summary.html").read_bytes()
+    return out
+
+
+def test_phase14_reports_are_unchanged(reports15):
+    assert hashlib.sha256(reports15[()]).hexdigest() == DEFAULT_SHA256
+    assert len(titles(reports15[()])) == 5
+    assert hashlib.sha256(reports15[P14]).hexdigest() == PHASE14_SHA256
+    assert hashlib.sha256(reports15[ALL14]).hexdigest() == PHASE7_14_SHA256
+    assert HU_TITLE not in titles(reports15[ALL14])
+
+
+def test_phase15_flag_adds_exactly_one_section(reports15):
+    assert titles(reports15[P15]) == titles(reports15[()]) + [HU_TITLE]
+    assert titles(reports15[ALL14 + P15]) == titles(reports15[ALL14]) + [HU_TITLE]
+
+
+def test_phase15_section_is_offline_and_carries_headline(reports15):
+    data = reports15[P15]
+    assert not re.search(r"https?://", data.decode("utf-8"), re.I)
+    root = parse(data)
+    header = "".join(root.find("body/header").itertext())
+    assert "hold-up investment 1 vs first best 3 at seller weight 5000 bps" in header
+    assert "contracting collapses at 9 ticks (analytic max contracting cost 8)" in header
+    assert "Phase 15 hold-up" in "".join(root.find("head/title").itertext())
+    sec = [s for s in root.iter("section") if s.get("class") == "experiment"][-1]
+    assert "Sweep: surplus_share by contracting_cost, seller_weight_bps" in "".join(sec.itertext())
+    assert sec.find("p").get("class") == "headline"
+
+
+def test_phase15_section_matches_run_from_config(ex, reports15, tmp_path):
+    from frictionlab.experiments import run_from_config
+    res, headline, rows, by, metric = ex.holdup()
+    direct = run_from_config(EXAMPLES / "configs" / "holdup_small.json")
+    assert rows == direct.rows and res.findings == direct.findings
+    assert by == ["contracting_cost", "seller_weight_bps"] and metric == "surplus_share"
+    assert f"contracting collapses at {direct.findings['bisected_threshold']} ticks" in headline
+    assert ex.main(["--out", str(tmp_path), *P15]) == 0
+    assert (tmp_path / "phase5_summary.html").read_bytes() == reports15[P15]

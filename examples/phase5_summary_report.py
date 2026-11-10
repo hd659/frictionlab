@@ -44,10 +44,15 @@ unchanged by it.
 optional section. The default and `--include-phase7` .. `--include-phase13` outputs are
 unchanged by it.
 
+`--include-phase15` appends the fl-074 hold-up experiment
+(`examples/configs/holdup_small.json`) as one more section, after every earlier optional
+section. The default and `--include-phase7` .. `--include-phase14` outputs are unchanged by it.
+
     python examples/phase5_summary_report.py [--out DIR] [--include-phase7] [--include-phase8]
                                              [--include-phase9] [--include-phase10]
                                              [--include-phase11] [--include-phase12]
                                              [--include-phase13] [--include-phase14]
+                                             [--include-phase15]
 """
 from __future__ import annotations
 
@@ -272,6 +277,20 @@ def menu_cost() -> Spec:
             res.rows, ["menu_cost", "inflation_ticks_per_step"], "adjustment_frequency")
 
 
+def holdup() -> Spec:
+    from frictionlab.experiments import run_from_config
+    raw = json.loads((HERE / "configs" / "holdup_small.json").read_text(encoding="utf-8"))
+    res = run_from_config(raw)
+    f = res.findings
+    return (res, f"hold-up investment {f['holdup_investment']} vs first best "
+                 f"{f['first_best_investment']} at seller weight {f['probe_weight']} bps "
+                 f"({f['holdup_surplus_loss']} ticks of surplus lost per pair); contracting "
+                 f"collapses at {f['bisected_threshold']} ticks (analytic max contracting cost "
+                 f"{f['analytic_threshold']}); surplus share down to {f['min_surplus_share']:.3f}; "
+                 f"{f['total_contracting_cost_paid']} ticks paid to the contract sink over the sweep",
+            res.rows, ["contracting_cost", "seller_weight_bps"], "surplus_share")
+
+
 def registry_config(cls: type, params: Dict[str, Any]) -> Any:
     names = {f.name for f in dataclasses.fields(cls)}
     return cls(**{k: tuple(v) if isinstance(v, list) else v for k, v in params.items() if k in names})
@@ -286,16 +305,19 @@ PHASE11: Tuple[Callable[[], Spec], ...] = (switching_cost,)
 PHASE12: Tuple[Callable[[], Spec], ...] = (critical_mass,)
 PHASE13: Tuple[Callable[[], Spec], ...] = (congestion,)
 PHASE14: Tuple[Callable[[], Spec], ...] = (menu_cost,)
+PHASE15: Tuple[Callable[[], Spec], ...] = (holdup,)
 
 
 def build(include_phase7: bool = False, include_phase8: bool = False,
           include_phase9: bool = False, include_phase10: bool = False,
           include_phase11: bool = False, include_phase12: bool = False,
-          include_phase13: bool = False, include_phase14: bool = False) -> Report:
+          include_phase13: bool = False, include_phase14: bool = False,
+          include_phase15: bool = False) -> Report:
     runs = (EXPERIMENTS + (PHASE7 if include_phase7 else ()) + (PHASE8 if include_phase8 else ())
             + (PHASE9 if include_phase9 else ()) + (PHASE10 if include_phase10 else ())
             + (PHASE11 if include_phase11 else ()) + (PHASE12 if include_phase12 else ())
-            + (PHASE13 if include_phase13 else ()) + (PHASE14 if include_phase14 else ()))
+            + (PHASE13 if include_phase13 else ()) + (PHASE14 if include_phase14 else ())
+            + (PHASE15 if include_phase15 else ()))
     specs = [run() for run in runs]
     meta = {res.name: headline for res, headline, *_ in specs}
     seeds = {res.name: res.master_seed for res, *_ in specs}
@@ -316,6 +338,8 @@ def build(include_phase7: bool = False, include_phase8: bool = False,
         title += " plus Phase 13 congestion"
     if include_phase14:
         title += " plus Phase 14 menu costs"
+    if include_phase15:
+        title += " plus Phase 15 hold-up"
     return Report(title,
                   master_seed=None, grid={"experiment": list(seeds)},
                   meta={"mode": "--small", **{f"seed {k}": v for k, v in seeds.items()}, **meta},
@@ -343,9 +367,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="append the Phase 13 congestion experiment as one more section")
     ap.add_argument("--include-phase14", action="store_true",
                     help="append the Phase 14 menu-cost experiment as one more section")
+    ap.add_argument("--include-phase15", action="store_true",
+                    help="append the Phase 15 hold-up experiment as one more section")
     a = ap.parse_args(argv)
     rep = build(a.include_phase7, a.include_phase8, a.include_phase9, a.include_phase10,
-                a.include_phase11, a.include_phase12, a.include_phase13, a.include_phase14)
+                a.include_phase11, a.include_phase12, a.include_phase13, a.include_phase14,
+                a.include_phase15)
     for k, v in rep.meta.items():
         print(f"{k:>24}: {v}")
     out = a.out if a.out is not None else Path(tempfile.mkdtemp(prefix="frictionlab-phase5-"))
